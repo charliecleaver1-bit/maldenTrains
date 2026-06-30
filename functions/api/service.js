@@ -63,6 +63,8 @@ function buildProgress(svc) {
       name: (l.location && l.location.description) || "—",
       crs: (l.location && l.location.shortCodes && l.location.shortCodes[0]) || "",
       time: hhmm(iso),
+      dep: hhmm(dep.realtimeActual || dep.realtimeForecast || dep.scheduleAdvertised),
+      arr: hhmm(arr.realtimeActual || arr.realtimeForecast || arr.scheduleAdvertised),
       platform: meta.platform ? meta.platform.actual || meta.platform.planned || null : null,
       departed: !!dep.realtimeActual,
       arrived: !!arr.realtimeActual,
