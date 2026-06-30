@@ -155,7 +155,6 @@
   .htl-track{position:relative;padding-top:8px;}
   .htl-line{position:absolute;top:32px;height:2px;background:var(--line);border-radius:2px;z-index:0;}
   .htl-fill{position:absolute;top:32px;height:2px;background:linear-gradient(90deg,var(--amber-dim),var(--amber));border-radius:2px;z-index:1;box-shadow:0 0 8px rgba(255,194,75,.45);}
-  .htl-train{position:absolute;top:4px;transform:translateX(-50%);z-index:4;color:var(--amber);filter:drop-shadow(0 1px 3px rgba(255,194,75,.5));pointer-events:none;}
   .htl-cols{display:flex;position:relative;z-index:2;}
   .htl-col{flex:0 0 auto;width:70px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px;}
   .htl-time{font-family:var(--mono);font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;height:12px;line-height:12px;}
@@ -494,15 +493,6 @@ async function loadService(s){
   return demoService(s);
 }
 
-const TRAIN_SVG = `<svg width="20" height="16" viewBox="0 0 28 24" fill="none" aria-hidden="true">
-  <rect x="5" y="2" width="18" height="15" rx="4" fill="currentColor"/>
-  <rect x="7.6" y="5" width="5" height="4.6" rx="1" fill="#0B0E13"/>
-  <rect x="15.4" y="5" width="5" height="4.6" rx="1" fill="#0B0E13"/>
-  <rect x="7" y="12" width="14" height="2.4" rx="1.2" fill="#0B0E13" opacity=".45"/>
-  <path d="M9 17 6 22M19 17 22 22" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-  <circle cx="9.5" cy="20.5" r="1.9" fill="currentColor"/><circle cx="18.5" cy="20.5" r="1.9" fill="currentColor"/>
-</svg>`;
-
 function renderProgress(panel, data){
   if(!data.stops || !data.stops.length){
     panel.innerHTML = `<div class="prog-cap">No live stop information for this train.</div>`;
@@ -526,7 +516,6 @@ function renderProgress(panel, data){
       <div class="htl-track" style="width:${n*W}px">
         <div class="htl-line" style="left:${W/2}px;width:${lineW}px"></div>
         <div class="htl-fill" style="left:${W/2}px;width:${fillW}px"></div>
-        <div class="htl-train" style="left:${curX}px">${TRAIN_SVG}</div>
         <div class="htl-cols">${cols}</div>
       </div>
     </div>`;
