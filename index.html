@@ -57,10 +57,15 @@
   .clock .t{font-family:var(--mono);font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:1px;}
   .clock .d{font-size:10.5px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;}
   .refresh-btn{
-    flex:none;width:42px;height:42px;border-radius:12px;
+    flex:none;width:42px;height:42px;border-radius:12px;position:relative;
     border:1px solid var(--line);background:var(--ink-2);color:var(--muted);
     display:grid;place-items:center;cursor:pointer;
     transition:color .2s,border-color .2s,background .2s,transform .12s;
+  }
+  .refresh-ago{
+    position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:9px;line-height:1;color:var(--muted-2);
+    white-space:nowrap;pointer-events:none;letter-spacing:.3px;
   }
   .refresh-btn:hover{color:var(--text);border-color:var(--muted-2)}
   .refresh-btn:active{transform:scale(.9)}
@@ -220,6 +225,7 @@
         <polyline points="1 20 1 14 7 14"></polyline>
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
       </svg>
+      <span class="refresh-ago" id="refresh-ago"></span>
     </button>
   </header>
 
@@ -599,6 +605,19 @@ function tick(){
   const next = all.find(s=>s.status!=="cancel")||all[0];
   const el = document.getElementById("hero-count");
   if(el && next && next.status!=="cancel") el.textContent = countLabel(next.etdMs||next.depMs);
+  // time since the last successful refresh (e.g. "2m")
+  const ago = document.getElementById("refresh-ago");
+  if(ago) ago.textContent = state.updated ? agoLabel(state.updated) : "";
+}
+
+/* "now" / "45s" / "2m" / "1h" since the given time */
+function agoLabel(d){
+  const s = Math.floor((Date.now() - d.getTime())/1000);
+  if(s < 10) return "now";
+  if(s < 60) return s + "s";
+  const m = Math.floor(s/60);
+  if(m < 60) return m + "m";
+  return Math.floor(m/60) + "h";
 }
 
 /* ---- boot ---- */
