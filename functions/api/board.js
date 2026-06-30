@@ -1,21 +1,38 @@
 /**
- * Cloudflare Pages Function — GET /api/service?id=<uniqueIdentity>
- * --------------------------------------------------------------
- * Returns one train's full calling pattern plus where it currently is
- * on the line, as a small, ready-to-render shape. Called lazily (only
- * when the user taps "Where's this train?") to keep token use low.
+ * Cloudflare Pages Function — GET /api/board?from=NEM&to=WAT
+ * ----------------------------------------------------------
+ * Talks to the Realtime Trains *next-generation* API (data.rtt.io,
+ * Bearer-token auth) and returns a small, clean JSON shape the
+ * front-end understands. Your token stays server-side — the RTT
+ * terms require it is never shipped in client code.
+ *
+ * Set ONE variable in  Cloudflare Pages → Settings → Variables & Secrets:
+ *   RTT_TOKEN = the token from https://api-portal.rtt.io
+ *
+ * Your token is a long-life *refresh* token. This function swaps it for
+ * a short-life *access* token (cached between requests) and uses that
+ * for the data calls. If your token is already an access token, it falls
+ * back to using it directly.
  */
 
 const BASE = "https://data.rtt.io";
+const NS = "gb-nr"; // Network Rail namespace (UK national rail)
+const ALLOWED = new Set(["NEM", "WAT"]); // lock the proxy to your two stations
 
-// Own access-token cache for this function (refresh -> short-life access).
-let cachedToken = null;
+// Cached access token, reused across requests on the same isolate.
+let cachedToken = null; // { token, expiresMs }
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
-  const id = url.searchParams.get("id");
-  if (!id) return json({ error: "Missing service id." }, 400);
-  if (!env.RTT_TOKEN) return json({ error: "Live feed not configured." }, 503);
+  const from = (url.searchParams.get("from") || "NEM").toUpperCase();
+  const to = (url.searchParams.get("to") || "WAT").toUpperCase();
+
+  if (!ALLOWED.has(from) || !ALLOWED.has(to)) {
+    return json({ error: "Unsupported station." }, 400);
+  }
+  if (!env.RTT_TOKEN) {
+    return json({ error: "Live feed not configured. Add RTT_TOKEN in Pages settings." }, 503);
+  }
 
   let accessToken;
   try {
@@ -24,108 +41,109 @@ export async function onRequestGet({ request, env }) {
     return json({ error: "Could not authenticate with the rail feed." }, 502);
   }
 
-  const q = `${BASE}/rtt/service?uniqueIdentity=${encodeURIComponent(id)}`;
-  let r;
+  const query = `${BASE}/rtt/location?code=${NS}:${from}&filterTo=${NS}:${to}`;
+  let upstream;
   try {
-    r = await fetch(q, { headers: { Authorization: `Bearer ${accessToken}` } });
+    upstream = await fetch(query, { headers: { Authorization: `Bearer ${accessToken}` } });
   } catch (e) {
     return json({ error: "Could not reach the rail data feed." }, 502);
   }
-  if (r.status === 404) return json({ error: "Service not found." }, 404);
-  if (r.status === 401) { cachedToken = null; return json({ error: "Token rejected." }, 502); }
-  if (!r.ok) return json({ error: `Rail feed error (${r.status}).` }, 502);
 
-  const data = await r.json();
-  const svc = data.service || {};
-  return json(buildProgress(svc), 200, { "cache-control": "public, max-age=20, s-maxage=20" });
-}
-
-/* Turn the full service into a compact stop list + current position. */
-function buildProgress(svc) {
-  const raw = svc.locations || [];
-  // Keep only public calling points (stops), drop pass-throughs.
-  const calls = raw.filter((l) => {
-    const d = (l.temporalData && l.temporalData.displayAs) || "PASS";
-    return d === "CALL" || d === "STARTS" || d === "TERMINATES" || d === "CANCELLED";
-  });
-
-  const stops = calls.map((l, i) => {
-    const t = l.temporalData || {};
-    const dep = t.departure || {};
-    const arr = t.arrival || {};
-    const isLast = i === calls.length - 1;
-    // Use arrival time at the final stop, departure time elsewhere; prefer realtime.
-    const iso = isLast
-      ? arr.realtimeActual || arr.realtimeForecast || arr.scheduleAdvertised || dep.scheduleAdvertised
-      : dep.realtimeActual || dep.realtimeForecast || dep.scheduleAdvertised || arr.scheduleAdvertised;
-    const meta = l.locationMetadata || {};
-    return {
-      name: (l.location && l.location.description) || "—",
-      crs: (l.location && l.location.shortCodes && l.location.shortCodes[0]) || "",
-      time: hhmm(iso),
-      platform: meta.platform ? meta.platform.actual || meta.platform.planned || null : null,
-      departed: !!dep.realtimeActual,
-      arrived: !!arr.realtimeActual,
-      status: t.status || null, // live: APPROACHING / AT_PLATFORM / DEPARTING ...
-      cancelled: dep.isCancelled === true || arr.isCancelled === true || t.displayAs === "CANCELLED",
-    };
-  });
-
-  // Work out where the train is.
-  let liveIdx = stops.findIndex((s) => s.status);
-  let lastDeparted = -1;
-  stops.forEach((s, i) => { if (s.departed) lastDeparted = i; });
-
-  let currentIdx;
-  if (liveIdx >= 0) currentIdx = liveIdx;
-  else if (lastDeparted >= 0) currentIdx = Math.min(lastDeparted + 1, stops.length - 1);
-  else currentIdx = 0;
-
-  stops.forEach((s, i) => {
-    s.passed = i < currentIdx;
-    s.current = i === currentIdx;
-  });
-
-  const caption = buildCaption(stops, currentIdx, liveIdx, lastDeparted);
-  return {
-    origin: stops.length ? stops[0].name : "—",
-    destination: stops.length ? stops[stops.length - 1].name : "—",
-    operator: (svc.scheduleMetadata && svc.scheduleMetadata.operator && svc.scheduleMetadata.operator.name) || "",
-    stops,
-    caption,
-  };
-}
-
-function buildCaption(stops, currentIdx, liveIdx, lastDeparted) {
-  if (!stops.length) return "No live information.";
-  const here = stops[currentIdx];
-  if (liveIdx >= 0) {
-    const s = stops[liveIdx].status;
-    if (s === "APPROACHING") return `Approaching ${stops[liveIdx].name}`;
-    return `At ${stops[liveIdx].name}`;
+  if (upstream.status === 204) {
+    return json({ from, to, generatedAt: new Date().toISOString(), services: [] });
   }
-  if (lastDeparted < 0) return `Not yet departed ${stops[0].name}`;
-  if (currentIdx >= stops.length - 1 && stops[stops.length - 1].arrived) return `Arrived at ${stops[stops.length - 1].name}`;
-  return `Departed ${stops[currentIdx - 1] ? stops[currentIdx - 1].name : stops[0].name}, next ${here.name}`;
+  if (upstream.status === 401) {
+    cachedToken = null; // token expired/invalid — drop it so next call re-auths
+    return json({ error: "Rail feed rejected the token." }, 502);
+  }
+  if (!upstream.ok) {
+    return json({ error: `Rail feed error (${upstream.status}).` }, 502);
+  }
+
+  const data = await upstream.json();
+  const services = (data.services || [])
+    .map((s) => normalise(s, to))
+    .filter((s) => s && s.std)
+    .slice(0, 12);
+
+  return json(
+    { from, to, generatedAt: new Date().toISOString(), services },
+    200,
+    { "cache-control": "public, max-age=20, s-maxage=20" }
+  );
 }
 
-/* Read published HH:MM straight from the timestamp (UK railway time) — no
-   timezone conversion (see board.js). */
-function hhmm(iso) {
-  const m = typeof iso === "string" && iso.match(/T(\d{2}):(\d{2})/);
-  return m ? `${m[1]}:${m[2]}` : null;
-}
-
+/* ---- Auth: refresh token -> short-life access token (cached) ---- */
 async function getAccessToken(refreshToken) {
   const now = Date.now();
-  if (cachedToken && cachedToken.expiresMs - 30000 > now) return cachedToken.token;
-  const r = await fetch(`${BASE}/api/get_access_token`, { headers: { Authorization: `Bearer ${refreshToken}` } });
-  if (!r.ok) { cachedToken = { token: refreshToken, expiresMs: now + 60000 }; return refreshToken; }
+  if (cachedToken && cachedToken.expiresMs - 30000 > now) {
+    return cachedToken.token;
+  }
+  const r = await fetch(`${BASE}/api/get_access_token`, {
+    headers: { Authorization: `Bearer ${refreshToken}` },
+  });
+  if (!r.ok) {
+    // Token may already be a direct access token — use it as-is.
+    cachedToken = { token: refreshToken, expiresMs: now + 60000 };
+    return refreshToken;
+  }
   const body = await r.json();
   const token = body.token || refreshToken;
   const expiresMs = body.validUntil ? Date.parse(body.validUntil) : now + 5 * 60000;
   cachedToken = { token, expiresMs };
   return token;
+}
+
+/* ---- Map one next-gen line-up object into the front-end shape ---- */
+function normalise(s, to) {
+  const t = s.temporalData || {};
+  const dep = t.departure || {};
+  const meta = s.locationMetadata || {};
+  const sched = s.scheduleMetadata || {};
+
+  const bookedIso = dep.scheduleAdvertised || dep.realtimeForecast || dep.realtimeActual;
+  if (!bookedIso) return null;
+
+  const expectedIso = dep.realtimeActual || dep.realtimeForecast || null;
+  const lateMins = typeof dep.realtimeAdvertisedLateness === "number" ? dep.realtimeAdvertisedLateness : 0;
+
+  const cancelled = dep.isCancelled === true || t.displayAs === "CANCELLED" || t.displayAs === "DIVERTED";
+
+  let status = "ontime";
+  let etd = null;
+  if (cancelled) {
+    status = "cancel";
+  } else if (expectedIso && lateMins >= 1) {
+    status = "late";
+    etd = hhmm(expectedIso);
+  }
+
+  const platform = meta.platform ? meta.platform.actual || meta.platform.planned || null : null;
+  const dest = (s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description) || "—";
+  const operator = (sched.operator && sched.operator.name) || "South Western Railway";
+  const mode = sched.modeType || "TRAIN";
+
+  return {
+    id: sched.uniqueIdentity || `${hhmm(bookedIso)}-${dest}`,
+    std: hhmm(bookedIso),
+    etd,
+    status,
+    platform,
+    destination: dest,
+    via: to === "NEM" ? "calls New Malden" : (mode !== "TRAIN" ? "rail replacement" : ""),
+    operator,
+    isBus: mode !== "TRAIN",
+  };
+}
+
+/* Read the published "HH:MM" straight from the RTT timestamp.
+   RTT gives railway (UK local) wall-clock times, so we do NOT timezone-
+   convert here — the user's device (already on UK time) anchors the
+   countdown. Converting on Cloudflare's UTC servers added a spurious
+   hour during British Summer Time. */
+function hhmm(iso) {
+  const m = typeof iso === "string" && iso.match(/T(\d{2}):(\d{2})/);
+  return m ? `${m[1]}:${m[2]}` : null;
 }
 
 function json(body, status = 200, extra = {}) {
