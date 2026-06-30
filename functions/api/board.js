@@ -17,7 +17,7 @@
 
 const BASE = "https://data.rtt.io";
 const NS = "gb-nr"; // Network Rail namespace (UK national rail)
-const ALLOWED = new Set(["NEM", "WAT"]); // lock the proxy to your two stations
+const ALLOWED = new Set(["NEM", "WAT", "VXH", "CLJ", "EAD", "WIM"]); // New Malden + selectable London-end stations
 
 // Cached access token, reused across requests on the same isolate.
 let cachedToken = null; // { token, expiresMs }
