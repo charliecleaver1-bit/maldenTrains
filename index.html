@@ -56,6 +56,18 @@
   .clock{margin-left:auto;text-align:right;}
   .clock .t{font-family:var(--mono);font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:1px;}
   .clock .d{font-size:10.5px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;}
+  .refresh-btn{
+    flex:none;width:42px;height:42px;border-radius:12px;
+    border:1px solid var(--line);background:var(--ink-2);color:var(--muted);
+    display:grid;place-items:center;cursor:pointer;
+    transition:color .2s,border-color .2s,background .2s,transform .12s;
+  }
+  .refresh-btn:hover{color:var(--text);border-color:var(--muted-2)}
+  .refresh-btn:active{transform:scale(.9)}
+  .refresh-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .refresh-btn.spin{color:var(--amber);border-color:rgba(255,194,75,.4)}
+  .refresh-btn.spin .ic-refresh{animation:rot .8s linear infinite;transform-origin:center}
+  @keyframes rot{to{transform:rotate(360deg)}}
 
   /* ---- Direction toggle ---- */
   .toggle{
@@ -143,12 +155,7 @@
   .empty{text-align:center;color:var(--muted);padding:34px 16px;border:1px dashed var(--line);border-radius:14px;font-size:13.5px;}
 
   /* ---- Footer ---- */
-  .foot{margin-top:20px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted-2);}
-  .foot button{appearance:none;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);border-radius:9px;padding:7px 12px;font-family:var(--body);font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:color .2s,border-color .2s}
-  .foot button:hover{color:var(--text);border-color:var(--muted-2)}
-  .foot button .sp{width:11px;height:11px;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;display:none}
-  .foot button.spin .sp{display:inline-block;animation:rot .7s linear infinite}
-  @keyframes rot{to{transform:rotate(360deg)}}
+  .foot{margin-top:20px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted-2);}
 
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
   @media (max-width:380px){
@@ -169,6 +176,13 @@
       <div class="t" id="clock">--:--</div>
       <div class="d" id="date">—</div>
     </div>
+    <button class="refresh-btn" id="refresh" onclick="refresh(true)" aria-label="Refresh train times" title="Refresh times">
+      <svg class="ic-refresh" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+    </button>
   </header>
 
   <div class="toggle" role="tablist" aria-label="Direction">
@@ -190,7 +204,6 @@
 
   <footer class="foot">
     <span id="updated">—</span>
-    <button id="refresh" onclick="refresh(true)"><span class="sp"></span><span class="lbl">Refresh</span></button>
   </footer>
 </div>
 
@@ -388,7 +401,7 @@ function render(){
   }
 
   const u = document.getElementById("updated");
-  u.textContent = state.updated ? `Updated ${hhmm(state.updated)} · auto every 45s` : "—";
+  u.textContent = state.updated ? `Updated ${hhmm(state.updated)} · refresh for the latest` : "—";
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -443,10 +456,8 @@ function tick(){
 /* ---- boot ---- */
 tick();
 render();
-refresh(false);
-setInterval(tick, 1000);
-setInterval(()=>refresh(false), 45000);
-document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(false); });
+refresh(false);            // fetch once when the page opens
+setInterval(tick, 1000);   // local clock + countdown only — no API calls
 </script>
 </body>
 </html>
