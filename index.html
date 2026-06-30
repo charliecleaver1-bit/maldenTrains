@@ -135,16 +135,15 @@
   /* ---- Journey progress (collapsible) ---- */
   .progress-toggle{
     appearance:none;background:transparent;border:0;cursor:pointer;
-    color:var(--muted);font-family:var(--body);font-size:12.5px;
-    display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:2px 0;
-    transition:color .2s;
+    width:100%;display:flex;align-items:center;justify-content:center;
+    color:var(--muted-2);margin-top:12px;padding:9px 0 2px;
+    border-top:1px solid var(--line);transition:color .2s;
   }
-  .progress-toggle:hover{color:var(--text)}
-  .progress-toggle:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:4px}
-  .progress-toggle .live-dot{width:7px;height:7px;border-radius:50%;background:var(--amber);animation:pulse 1.6s infinite}
-  .progress-toggle .chev{font-size:10px;transition:transform .2s;color:var(--muted-2)}
-  .progress-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
-  .progress{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .progress-toggle:hover{color:var(--amber)}
+  .progress-toggle:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:6px}
+  .progress-toggle .chev{transition:transform .25s ease,color .2s;}
+  .progress-toggle[aria-expanded="true"] .chev{transform:rotate(180deg);color:var(--amber)}
+  .progress{display:none;margin-top:6px;padding-top:12px;}
   .progress.open{display:block;animation:fade .25s ease}
   @keyframes fade{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
   .prog-cap{font-size:12px;color:var(--amber);margin-bottom:10px;font-weight:500;}
@@ -154,7 +153,8 @@
   .htl::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
   .htl-track{position:relative;padding-top:8px;}
   .htl-line{position:absolute;top:32px;height:2px;background:var(--line);border-radius:2px;z-index:0;}
-  .htl-fill{position:absolute;top:32px;height:2px;background:linear-gradient(90deg,var(--amber-dim),var(--amber));border-radius:2px;z-index:1;box-shadow:0 0 8px rgba(255,194,75,.45);}
+  .htl-fill{position:absolute;top:32px;height:2px;background:linear-gradient(90deg,var(--amber-dim),var(--amber));border-radius:2px;z-index:1;box-shadow:0 0 8px rgba(255,194,75,.45);transition:width .9s linear;}
+  .htl-head{position:absolute;top:33px;width:13px;height:13px;border-radius:50%;background:var(--amber);transform:translate(-50%,-50%);box-shadow:0 0 0 4px rgba(255,194,75,.2),0 0 10px rgba(255,194,75,.65);z-index:3;animation:pulse 1.4s infinite;transition:left .9s linear;}
   .htl-cols{display:flex;position:relative;z-index:2;}
   .htl-col{flex:0 0 auto;width:70px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px;}
   .htl-time{font-family:var(--mono);font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;height:12px;line-height:12px;}
@@ -163,11 +163,26 @@
   .htl-plat{display:block;font-family:var(--mono);font-size:9px;color:var(--muted-2);margin-top:2px;}
   .htl-col.done .htl-dot{background:var(--amber-dim);border-color:var(--amber-dim);}
   .htl-col.done .htl-name,.htl-col.done .htl-time{color:var(--muted-2);}
-  .htl-col.now .htl-dot{background:var(--amber);border-color:var(--amber);box-shadow:0 0 0 4px rgba(255,194,75,.18);animation:pulse 1.6s infinite;}
+  .htl-col.now .htl-dot{background:var(--amber);border-color:var(--amber);}
   .htl-col.now .htl-name{color:var(--text);font-weight:600;}
   .htl-col.now .htl-time{color:var(--amber);}
   .htl-col.cx .htl-dot{border-color:var(--red);background:var(--ink);}
   .htl-col.cx .htl-name{color:var(--red);text-decoration:line-through;}
+
+  /* ---- Station picker ---- */
+  .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
+  .station-lbl{font-size:12px;color:var(--muted);min-width:34px;}
+  .station-wrap{position:relative;flex:1;}
+  #station{
+    appearance:none;-webkit-appearance:none;width:100%;cursor:pointer;
+    background:var(--ink-2);color:var(--text);border:1px solid var(--line);
+    border-radius:11px;padding:10px 38px 10px 13px;
+    font-family:var(--display);font-size:14px;font-weight:600;
+    transition:border-color .2s;
+  }
+  #station:hover{border-color:var(--muted-2)}
+  #station:focus-visible{outline:2px solid var(--amber);outline-offset:1px}
+  .station-chev{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
 
   /* ---- List ---- */
   .listhead{display:flex;align-items:center;justify-content:space-between;margin:18px 4px 8px;}
@@ -233,6 +248,14 @@
     <button id="btn-home" role="tab" aria-pressed="false" onclick="setDir('home')"><span class="ic">↘</span>Home</button>
   </div>
 
+  <div class="station-row">
+    <span id="station-label" class="station-lbl">To</span>
+    <div class="station-wrap">
+      <select id="station" aria-label="Choose station" onchange="setStation(this.value)"></select>
+      <svg class="station-chev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+  </div>
+
   <div class="alert" id="alert" role="status">
     <span class="dot"></span><span id="alert-txt"></span>
   </div>
@@ -254,21 +277,38 @@
 "use strict";
 
 /* ============================================================
-   Config — the two journeys this app cares about.
+   Config — New Malden is fixed; the London end is selectable.
    ============================================================ */
-const STATIONS = { NEM: "New Malden", WAT: "London Waterloo" };
-const JOURNEYS = {
-  out:  { from:"NEM", to:"WAT", title:"To London Waterloo", listTitle:"Later to London" },
-  home: { from:"WAT", to:"NEM", title:"Home to New Malden", listTitle:"Later trains home" },
+const STATIONS = {
+  NEM:"New Malden", WAT:"London Waterloo", VXH:"Vauxhall",
+  CLJ:"Clapham Junction", EAD:"Earlsfield", WIM:"Wimbledon",
 };
+// The selectable London-end stations (Waterloo is the default).
+const LONDON_STATIONS = [
+  { code:"WAT", name:"Waterloo" },
+  { code:"VXH", name:"Vauxhall" },
+  { code:"CLJ", name:"Clapham Junction" },
+  { code:"EAD", name:"Earlsfield" },
+  { code:"WIM", name:"Wimbledon" },
+];
 
 let state = {
   dir: defaultDir(),
+  station: "WAT",       // London-end station, always resets to Waterloo
   source: "demo",       // "live" | "demo"
   services: [],
   updated: null,
   loading: false,
 };
+
+/* The current journey, derived from direction + chosen station.
+   To London: New Malden -> chosen station. Home: chosen station -> New Malden. */
+function curJourney(){
+  const st = state.station;
+  return state.dir === "out"
+    ? { from:"NEM", to:st, listTitle:"Later to London" }
+    : { from:st, to:"NEM", listTitle:"Later trains home" };
+}
 
 /* Pick a sensible default: mornings face London, afternoons head home. */
 function defaultDir(){
@@ -282,7 +322,7 @@ function defaultDir(){
    Realtime Trains token server-side.
    ============================================================ */
 async function fetchBoard(dir){
-  const j = JOURNEYS[dir];
+  const j = curJourney();
   try{
     const r = await fetch(`/api/board?from=${j.from}&to=${j.to}`, { headers:{accept:"application/json"} });
     if(!r.ok) throw new Error("proxy "+r.status);
@@ -374,11 +414,12 @@ function statusLine(s){
 }
 
 function render(){
-  const j = JOURNEYS[state.dir];
+  const j = curJourney();
   document.getElementById("list-title").textContent = j.listTitle;
   document.getElementById("btn-out").setAttribute("aria-pressed", state.dir==="out");
   document.getElementById("btn-home").setAttribute("aria-pressed", state.dir==="home");
   document.getElementById("src").textContent = state.source==="live" ? "live · RTT" : "demo data";
+  syncStationPicker();
 
   const all = normalise(state.services);
   const upcoming = all.filter(s=> s.status==="cancel" || (s.depMs && s.depMs > Date.now()-90000));
@@ -406,7 +447,7 @@ function render(){
       <div class="hero">
         <div class="eyebrow">Next ${state.dir==="out"?"to London":"home"} · <span class="${liveCls}"><i></i>${liveTxt}</span></div>
         <div class="dest">${esc(next.destination)}</div>
-        <div class="via">${esc(next.via||STATIONS[j.to]||"")}</div>
+        <div class="via">${esc(viaText(next))}</div>
         <div class="row">
           <div class="timeblock">
             <div class="lbl">Departs</div>
@@ -420,8 +461,8 @@ function render(){
         </div>
         <div class="plat">Platform <b>${next.platform||"?"}</b> · ${esc(next.operator||"South Western Railway")}</div>
         ${showProg ? `
-        <button class="progress-toggle" id="tog-${pkey}" aria-expanded="false" onclick="toggleProgress('${pkey}')">
-          <span class="live-dot"></span>Where's this train?<span class="chev">▾</span>
+        <button class="progress-toggle" id="tog-${pkey}" aria-expanded="false" aria-label="Show stops and live position" onclick="toggleProgress('${pkey}')">
+          <svg class="chev" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </button>
         <div class="progress" id="prog-${pkey}"></div>` : ""}
       </div>`;
@@ -441,7 +482,7 @@ function render(){
         <div class="mid">
           <div class="d">${esc(s.destination)}</div>
           <div class="s">${statusLine(s)}</div>
-          ${s.via?`<div class="tag">${esc(s.via)}</div>`:""}
+          ${viaText(s)?`<div class="tag">${esc(viaText(s))}</div>`:""}
         </div>
         <div class="right">
           <div class="cd">${cd}</div>
@@ -493,56 +534,125 @@ async function loadService(s){
   return demoService(s);
 }
 
-function renderProgress(panel, data){
-  if(!data.stops || !data.stops.length){
-    panel.innerHTML = `<div class="prog-cap">No live stop information for this train.</div>`;
-    return;
-  }
-  const stops = data.stops, n = stops.length, W = 70;
-  let currentIdx = stops.findIndex(s=>s.current);
-  if(currentIdx < 0) currentIdx = 0;
+let openProgress = null; // tracks an open timeline so it can creep between refreshes
 
-  const cols = stops.map(st=>`
-    <div class="htl-col ${st.passed?"done":""} ${st.current?"now":""} ${st.cancelled?"cx":""}">
+/* Estimate where the train is as a fractional stop index (e.g. 3.4 = 40%
+   of the way from stop 3 to stop 4), using when it actually left the last
+   station vs when it's due at the next. Recomputed live each second. */
+function computePosition(stops){
+  const n = stops.length;
+  if(!n) return { pos:0, caption:"No information." };
+  const depMs = stops.map(s=> s.dep ? toMs(s.dep) : null);
+  const arrMs = stops.map(s=> s.arr ? toMs(s.arr) : (s.dep ? toMs(s.dep) : null));
+  let lastDep = -1;
+  stops.forEach((s,i)=>{ if(s.departed) lastDep = i; });
+  const liveIdx = stops.findIndex(s=> s.status);
+
+  let pos, caption;
+  if(lastDep === -1){
+    pos = 0;
+    caption = `Not yet departed ${stops[0].name}`;
+  } else if(lastDep >= n-1){
+    pos = n-1;
+    caption = `Arrived at ${stops[n-1].name}`;
+  } else {
+    const B = lastDep + 1;
+    if(stops[B].arrived){
+      pos = B;
+      caption = `At ${stops[B].name}`;
+    } else {
+      const a = depMs[lastDep], b = arrMs[B];
+      let frac = 0.12;
+      if(a!=null && b!=null && b>a) frac = Math.max(0.04, Math.min(0.96, (Date.now()-a)/(b-a)));
+      pos = lastDep + frac;
+      caption = `Left ${stops[lastDep].name} · approaching ${stops[B].name}`;
+    }
+  }
+  // a live "approaching / at platform" report is more precise than the estimate
+  if(liveIdx >= 0 && stops[liveIdx].status){
+    caption = (stops[liveIdx].status === "APPROACHING" ? "Approaching " : "At ") + stops[liveIdx].name;
+  }
+  return { pos, caption };
+}
+
+function progressCols(stops, pos){
+  return stops.map((st,i)=>{
+    const done = pos > i + 0.08;
+    const atHere = Math.abs(pos - i) <= 0.12;
+    return `<div class="htl-col ${done?"done":""} ${atHere?"now":""} ${st.cancelled?"cx":""}">
       <div class="htl-time">${st.time||""}</div>
       <div class="htl-dot"></div>
       <div class="htl-name">${esc(st.name)}${st.platform?`<span class="htl-plat">P${esc(st.platform)}</span>`:""}</div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
+}
 
-  const lineW = (n-1)*W, fillW = currentIdx*W, curX = currentIdx*W + W/2;
+function renderProgress(panel, data){
+  if(!data.stops || !data.stops.length){
+    panel.innerHTML = `<div class="prog-cap">No live stop information for this train.</div>`;
+    openProgress = null;
+    return;
+  }
+  const stops = data.stops, n = stops.length, W = 70;
+  const { pos, caption } = computePosition(stops);
+  const lineW = (n-1)*W, fillW = pos*W, headX = pos*W + W/2;
+
   panel.innerHTML = `
-    <div class="prog-cap">${data.demo?`<span class="demo-chip">demo</span> `:""}${esc(data.caption||"")}</div>
+    <div class="prog-cap" data-cap>${data.demo?`<span class="demo-chip">demo</span> `:""}${esc(caption||"")}</div>
     <div class="htl">
       <div class="htl-track" style="width:${n*W}px">
         <div class="htl-line" style="left:${W/2}px;width:${lineW}px"></div>
-        <div class="htl-fill" style="left:${W/2}px;width:${fillW}px"></div>
-        <div class="htl-cols">${cols}</div>
+        <div class="htl-fill" data-fill style="left:${W/2}px;width:${fillW}px"></div>
+        <div class="htl-head" data-head style="left:${headX}px"></div>
+        <div class="htl-cols">${progressCols(stops, pos)}</div>
       </div>
     </div>`;
 
-  // bring the train's position into view
   requestAnimationFrame(()=>{
     const outer = panel.querySelector(".htl");
-    if(outer) outer.scrollLeft = Math.max(0, curX - outer.clientWidth/2);
+    if(outer) outer.scrollLeft = Math.max(0, headX - outer.clientWidth/2);
+  });
+
+  openProgress = { panel, stops, n, W, demo:!!data.demo };
+}
+
+/* Called every second from tick() — nudges the marker along between stops
+   without any new API calls. */
+function updateOpenProgress(){
+  const op = openProgress;
+  if(!op) return;
+  if(!document.body.contains(op.panel) || !op.panel.classList.contains("open")){ openProgress = null; return; }
+  const { pos, caption } = computePosition(op.stops);
+  const fill = op.panel.querySelector("[data-fill]");
+  const head = op.panel.querySelector("[data-head]");
+  const cap  = op.panel.querySelector("[data-cap]");
+  if(fill) fill.style.width = (pos*op.W) + "px";
+  if(head) head.style.left = (pos*op.W + op.W/2) + "px";
+  if(cap)  cap.innerHTML = `${op.demo?`<span class="demo-chip">demo</span> `:""}${esc(caption||"")}`;
+  op.panel.querySelectorAll(".htl-col").forEach((c,i)=>{
+    c.classList.toggle("done", pos > i + 0.08);
+    c.classList.toggle("now", Math.abs(pos - i) <= 0.12);
   });
 }
 
-/* Believable stand-in journey so the feature works in demo mode. */
+/* Believable stand-in journey (with a live, moving position) for demo mode. */
+const DEMO_LINE = ["Woking","Surbiton","New Malden","Raynes Park","Wimbledon","Earlsfield","Clapham Junction","Vauxhall","London Waterloo"];
 function demoService(s){
   const out = state.dir === "out";
-  const chain = out
-    ? ["Woking","Surbiton","New Malden","Raynes Park","Wimbledon","Clapham Junction","Vauxhall","London Waterloo"]
-    : ["London Waterloo","Vauxhall","Clapham Junction","Wimbledon","Raynes Park","New Malden","Surbiton","Woking"];
-  const board = out ? "New Malden" : "London Waterloo";
-  const boardIdx = chain.indexOf(board);
+  const selName = STATIONS[state.station] || "London Waterloo";
+  let selIdx = DEMO_LINE.indexOf(selName); if(selIdx < 0) selIdx = DEMO_LINE.length-1;
+  let chain = DEMO_LINE.slice(0, selIdx+1);     // Woking … chosen station
+  let board;
+  if(out){ board = "New Malden"; } else { chain = chain.slice().reverse(); board = selName; }
+  const boardIdx = Math.max(0, chain.indexOf(board));
   const base = parseHHMM(s && s.std);
-  const stops = chain.map((n,i)=>({
-    name:n, time: toHHMM(base + (i-boardIdx)*4), platform: (i%4)+1,
-  }));
-  const currentIdx = out ? Math.max(0, boardIdx-2) : 0;
-  stops.forEach((st,i)=>{ st.passed = i<currentIdx; st.current = i===currentIdx; });
-  const caption = out ? `Approaching ${stops[currentIdx].name}` : `At ${stops[0].name}, platform ${stops[0].platform}`;
-  return { origin:chain[0], destination:chain[chain.length-1], stops, caption, demo:true };
+  const now = Date.now();
+  const stops = chain.map((nm,i)=>{
+    const t = toHHMM(base + (i-boardIdx)*4);
+    const tMs = toMs(t);
+    return { name:nm, time:t, dep:t, arr:t, platform:(i%4)+1, departed: tMs < now, arrived: tMs < now - 30000 };
+  });
+  return { origin:chain[0], destination:chain[chain.length-1], stops, demo:true };
 }
 
 function parseHHMM(s){ if(!s) return 480; const p=s.split(":"); return (+p[0])*60 + (+p[1]); }
@@ -576,11 +686,36 @@ function showSkeleton(){
 }
 
 function setDir(dir){
-  if(state.dir===dir) return;
+  if(state.dir===dir){ return; }
   state.dir = dir;
+  state.station = "WAT";   // always revert to Waterloo when switching direction
   state.services = [];
   render();
   refresh(false);
+}
+
+function setStation(code){
+  if(!STATIONS[code] || state.station===code) return;
+  state.station = code;
+  state.services = [];
+  render();
+  refresh(false);
+}
+
+/* Keep the station dropdown in step with state (label + selected value). */
+function syncStationPicker(){
+  const sel = document.getElementById("station");
+  const lbl = document.getElementById("station-label");
+  if(!sel) return;
+  lbl.textContent = state.dir === "out" ? "To" : "From";
+  if(sel.value !== state.station) sel.value = state.station;
+}
+
+/* The small "calls at …" context line, given the chosen station. */
+function viaText(s){
+  if(state.dir === "home") return s.via || "calls New Malden";
+  // To London: only note the chosen station when it isn't the Waterloo default.
+  return state.station === "WAT" ? "" : `Calls at ${STATIONS[state.station]}`;
 }
 
 /* live ticking: clock + countdowns every second */
@@ -597,6 +732,8 @@ function tick(){
   // time since the last successful refresh (e.g. "2m")
   const ago = document.getElementById("refresh-ago");
   if(ago) ago.textContent = state.updated ? agoLabel(state.updated) : "";
+  // nudge an open journey timeline along (local only)
+  updateOpenProgress();
 }
 
 /* "now" / "45s" / "2m" / "1h" since the given time */
@@ -610,6 +747,13 @@ function agoLabel(d){
 }
 
 /* ---- boot ---- */
+function buildStationOptions(){
+  const sel = document.getElementById("station");
+  if(!sel) return;
+  sel.innerHTML = LONDON_STATIONS.map(s=>`<option value="${s.code}">${s.name}</option>`).join("");
+  sel.value = state.station;
+}
+buildStationOptions();
 tick();
 render();
 refresh(false);            // fetch once when the page opens
