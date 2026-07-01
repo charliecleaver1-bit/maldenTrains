@@ -213,13 +213,19 @@
   .listhead h2{font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);font-weight:600;}
   .listhead .src{font-size:11px;color:var(--muted-2);font-family:var(--mono);}
   .board{display:flex;flex-direction:column;gap:7px;}
+  .svc-wrap{background:var(--surface);border:1px solid var(--line);border-radius:13px;overflow:hidden;transition:border-color .2s;}
+  .svc-wrap:has(.svc[aria-expanded="true"]){border-color:var(--muted-2);}
   .svc{
-    display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:13px;
-    background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 15px;
-    transition:border-color .2s, transform .12s;
+    display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:13px;
+    padding:13px 15px;transition:transform .12s, background .2s;
   }
+  .svc[role="button"]{cursor:pointer;}
+  .svc[role="button"]:hover{background:var(--surface-2);}
+  .svc[role="button"]:focus-visible{outline:2px solid var(--amber);outline-offset:-2px;}
   .svc:active{transform:scale(.995)}
   .svc.gone{opacity:.4}
+  .svc-chev{color:var(--muted-2);transition:transform .25s ease,color .2s;flex:none;}
+  .svc[aria-expanded="true"] .svc-chev{transform:rotate(180deg);color:var(--amber);}
   .svc .stime{font-family:var(--mono);font-size:19px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.5px;}
   .svc.cx .stime{color:var(--red);text-decoration:line-through;text-decoration-thickness:1.5px;}
   .svc .mid .d{font-size:14.5px;font-weight:500;line-height:1.2;}
@@ -229,9 +235,10 @@
   .svc .right .cd{font-family:var(--display);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1;}
   .svc .right .pl{font-size:10.5px;color:var(--muted);margin-top:4px;}
   .svc .right .pl b{color:var(--text);font-family:var(--mono);font-weight:500}
+  .progress.sub{margin:0;padding:12px 15px 6px;border-top:1px solid var(--line);}
 
   /* ---- States ---- */
-  .skeleton .svc{background:var(--surface);border-color:var(--line);height:62px;animation:sk 1.4s ease-in-out infinite}
+  .skeleton .svc{background:var(--surface);border:1px solid var(--line);border-radius:13px;height:62px;animation:sk 1.4s ease-in-out infinite}
   @keyframes sk{0%,100%{opacity:.5}50%{opacity:.85}}
   .empty{text-align:center;color:var(--muted);padding:34px 16px;border:1px dashed var(--line);border-radius:14px;font-size:13.5px;}
 
@@ -479,6 +486,7 @@ function targetName(){
 
 function render(){
   const j = curJourney();
+  progressTargets = {};   // rebuilt below for the hero + each visible row
   document.getElementById("list-title").textContent = j.listTitle;
   document.getElementById("btn-out").setAttribute("aria-pressed", state.dir==="out");
   document.getElementById("btn-home").setAttribute("aria-pressed", state.dir==="home");
@@ -531,14 +539,6 @@ function render(){
         </button>
         <div class="progress" id="prog-${pkey}"></div>` : ""}
       </div>`;
-
-    // Keep the journey panel open across refreshes (same train still next).
-    if(showProg && state.expandedId && next.id === state.expandedId){
-      openPanel(pkey, true);   // silent: don't flash the "finding…" placeholder
-    } else if(state.expandedId){
-      // the previously-open train is no longer next — tidy up
-      state.expandedId = null; openProgress = null; stopProgressAutoRefresh();
-    }
   }
 
   // --- later list (skip the hero train) ---
@@ -550,7 +550,11 @@ function render(){
     board.innerHTML = rest.map(s=>{
       const cls = s.status==="cancel" ? "svc cx" : "svc";
       const cd = s.status==="cancel" ? `<span class="cancel">—</span>` : `<span>${countLabel(s.etdMs||s.depMs)}</span>`;
-      return `<div class="${cls}">
+      const rkey = keyFor(s);
+      progressTargets[rkey] = s;
+      const canExpand = s.status !== "cancel";
+      return `<div class="svc-wrap">
+        <div class="${cls}" ${canExpand?`role="button" tabindex="0" aria-expanded="false" id="tog-${rkey}" onclick="toggleProgress('${rkey}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProgress('${rkey}')}"`:""}>
         <div class="stime">${s.stdLabel}</div>
         <div class="mid">
           <div class="d">${esc(s.destination)}</div>
@@ -561,8 +565,20 @@ function render(){
           <div class="cd">${cd}</div>
           <div class="pl">Plat <b>${s.platform||"?"}</b></div>
         </div>
+        ${canExpand?`<svg class="svc-chev chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`:""}
+        </div>
+        ${canExpand?`<div class="progress sub" id="prog-${rkey}"></div>`:""}
       </div>`;
     }).join("");
+  }
+
+  // Reopen whichever train's panel was open, across a refresh (accordion).
+  if(state.expandedId){
+    let reopened = false;
+    for(const k in progressTargets){
+      if(progressTargets[k].id === state.expandedId){ openPanel(k, true); reopened = true; break; }
+    }
+    if(!reopened){ state.expandedId = null; openProgress = null; stopProgressAutoRefresh(); }
   }
 
   const u = document.getElementById("updated");
@@ -590,6 +606,7 @@ async function openPanel(key, silent){
   const panel = document.getElementById("prog-" + key);
   const tog = document.getElementById("tog-" + key);
   if(!panel) return;
+  closeOtherPanels(key);          // accordion — only one open at a time
   panel.classList.add("open");
   if(tog) tog.setAttribute("aria-expanded", "true");
   const target = progressTargets[key];
@@ -599,6 +616,19 @@ async function openPanel(key, silent){
   renderProgress(panel, data);              // (re)establishes openProgress
   if(openProgress){ openProgress.target = target; openProgress.key = key; }
   startProgressAutoRefresh();
+}
+
+/* Collapse every open panel except the given key, and stop its auto-refresh. */
+function closeOtherPanels(exceptKey){
+  document.querySelectorAll(".progress.open").forEach(p=>{
+    const k = p.id.replace("prog-","");
+    if(k === exceptKey) return;
+    p.classList.remove("open");
+    const t = document.getElementById("tog-" + k);
+    if(t) t.setAttribute("aria-expanded", "false");
+  });
+  stopProgressAutoRefresh();
+  openProgress = null;
 }
 
 function closePanel(key){
