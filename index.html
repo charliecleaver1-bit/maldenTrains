@@ -72,6 +72,11 @@
   .refresh-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
   .refresh-btn.spin{color:var(--amber);border-color:rgba(255,194,75,.4)}
   .refresh-btn.spin .ic-refresh{animation:rot .8s linear infinite;transform-origin:center}
+  .refresh-btn .ic-check{display:none}
+  .refresh-btn.ok{color:var(--green);border-color:rgba(86,214,160,.5);background:rgba(86,214,160,.10)}
+  .refresh-btn.ok .ic-refresh{display:none}
+  .refresh-btn.ok .ic-check{display:block;animation:pop .3s ease}
+  @keyframes pop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
   @keyframes rot{to{transform:rotate(360deg)}}
 
   /* ---- Direction toggle ---- */
@@ -131,6 +136,7 @@
   .plat b{font-family:var(--mono);color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:2px 8px;font-weight:500;}
 
   .ontime{color:var(--green)} .late{color:var(--amber)} .cancel{color:var(--red)}
+  .jt{color:var(--muted);font-weight:400;}
 
   /* ---- Journey progress (collapsible) ---- */
   .progress-toggle{
@@ -239,6 +245,7 @@
         <polyline points="1 20 1 14 7 14"></polyline>
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
       </svg>
+      <svg class="ic-check" viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
       <span class="refresh-ago" id="refresh-ago"></span>
     </button>
   </header>
@@ -360,6 +367,7 @@ function demoBoard(dir){
       depMs: dep.getTime(),
       status,
       departed: dep.getTime() < now.getTime() - 60000, // demo proxy: "left" ~1 min after due
+      journeyMins: out ? 20 : 21,
       platform: out ? String(1+(i%2)) : String(1+(i%4)),
       destination: d,
       via,
@@ -382,6 +390,17 @@ function isBoardable(s){
   if(s.status === "cancel") return true;
   if(s.departed) return false;
   return !s.depMs || s.depMs > Date.now() - 30*60000;
+}
+
+/* Hide services that take over 40 minutes to reach the target station
+   (Waterloo/your stop for To London; New Malden for Home) — the slow
+   Kingston-loop "long way round" trains. */
+function isLongWay(s){
+  return typeof s.journeyMins === "number" && s.journeyMins > 40;
+}
+
+function visibleServices(all){
+  return all.filter(s => isBoardable(s) && !isLongWay(s));
 }
 
 /* Turn an "HH:MM" (or live "HHMM") into a ms timestamp near now,
@@ -418,13 +437,25 @@ function normalise(list){
 }
 
 function statusLine(s){
-  if(s.status==="cancel") return `<span class="cancel">Cancelled</span>`;
+  const jt = journeyText(s);
+  if(s.status==="cancel") return `<span class="cancel">Cancelled</span>${jt}`;
   if(s.status==="late" && s.etdLabel){
     const mins = (s.etdMs && s.depMs) ? Math.round((s.etdMs - s.depMs)/60000) : 0;
     const late = mins > 0 ? ` · ${mins} min late` : "";
-    return `<span class="late">Expected ${s.etdLabel}${late}</span>`;
+    return `<span class="late">Expected ${s.etdLabel}${late}</span>${jt}`;
   }
-  return `<span class="ontime">On time</span>`;
+  return `<span class="ontime">On time</span>${jt}`;
+}
+
+/* "· 22 min to Waterloo" — how long the trip takes to the target station. */
+function journeyText(s){
+  if(typeof s.journeyMins !== "number" || s.journeyMins <= 0) return "";
+  return ` <span class="jt">· ${s.journeyMins} min to ${esc(targetName())}</span>`;
+}
+
+/* Short name of the station this journey is timed to. */
+function targetName(){
+  return state.dir === "out" ? (STATIONS[state.station] || "Waterloo").replace(/^London /,"") : "New Malden";
 }
 
 function render(){
@@ -436,7 +467,7 @@ function render(){
   syncStationPicker();
 
   const all = normalise(state.services);
-  const upcoming = all.filter(isBoardable);
+  const upcoming = visibleServices(all);
 
   // --- alert banner (derived from the upcoming services) ---
   const al = document.getElementById("alert"), alt=document.getElementById("alert-txt");
@@ -689,6 +720,10 @@ async function refresh(manual){
   state.loading = false;
   btn.classList.remove("spin");
   render();
+  // brief green tick to confirm the refresh landed
+  btn.classList.add("ok");
+  clearTimeout(btn._okTimer);
+  btn._okTimer = setTimeout(()=>btn.classList.remove("ok"), 1300);
 }
 
 function showSkeleton(){
@@ -739,7 +774,7 @@ function tick(){
   document.getElementById("date").textContent =
     now.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
   // update hero countdown cheaply without full re-render
-  const all = normalise(state.services).filter(isBoardable);
+  const all = visibleServices(normalise(state.services));
   const next = all.find(s=>s.status!=="cancel")||all[0];
   const el = document.getElementById("hero-count");
   if(el && next && next.status!=="cancel") el.textContent = countLabel(next.etdMs||next.depMs);
