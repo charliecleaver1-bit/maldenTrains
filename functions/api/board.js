@@ -104,8 +104,17 @@ function normalise(s, to) {
   const bookedIso = dep.scheduleAdvertised || dep.realtimeForecast || dep.realtimeActual;
   if (!bookedIso) return null;
 
+  // Expected departure: actual if it has gone, otherwise the live forecast.
   const expectedIso = dep.realtimeActual || dep.realtimeForecast || null;
-  const lateMins = typeof dep.realtimeAdvertisedLateness === "number" ? dep.realtimeAdvertisedLateness : 0;
+
+  // Lateness = expected minus booked, in minutes. Comparing the two timestamps
+  // is timezone-proof (both shift the same way), and unlike the feed's
+  // "lateness" field this works BEFORE the train has departed too.
+  let lateMins = 0;
+  if (expectedIso && bookedIso) {
+    const d = Math.round((Date.parse(expectedIso) - Date.parse(bookedIso)) / 60000);
+    if (!Number.isNaN(d)) lateMins = d;
+  }
 
   const cancelled = dep.isCancelled === true || t.displayAs === "CANCELLED" || t.displayAs === "DIVERTED";
 
@@ -113,7 +122,7 @@ function normalise(s, to) {
   let etd = null;
   if (cancelled) {
     status = "cancel";
-  } else if (expectedIso && lateMins >= 1) {
+  } else if (lateMins >= 1 && expectedIso) {
     status = "late";
     etd = hhmm(expectedIso);
   }
@@ -128,6 +137,7 @@ function normalise(s, to) {
     std: hhmm(bookedIso),
     etd,
     status,
+    departed: !!dep.realtimeActual, // has it actually left this station yet?
     platform,
     destination: dest,
     via: to === "NEM" ? "calls New Malden" : (mode !== "TRAIN" ? "rail replacement" : ""),
