@@ -41,28 +41,34 @@ export async function onRequestGet({ request, env }) {
     return json({ error: "Could not authenticate with the rail feed." }, 502);
   }
 
-  const query = `${BASE}/rtt/location?code=${NS}:${from}&filterTo=${NS}:${to}`;
-  let upstream;
+  // Board anchored at `from` (the platform the user stands on).
+  let primary;
   try {
-    upstream = await fetch(query, { headers: { Authorization: `Bearer ${accessToken}` } });
+    primary = await fetch(`${BASE}/rtt/location?code=${NS}:${from}&filterTo=${NS}:${to}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } });
   } catch (e) {
     return json({ error: "Could not reach the rail data feed." }, 502);
   }
 
-  if (upstream.status === 204) {
+  if (primary.status === 204) {
     return json({ from, to, generatedAt: new Date().toISOString(), services: [] });
   }
-  if (upstream.status === 401) {
+  if (primary.status === 401) {
     cachedToken = null; // token expired/invalid — drop it so next call re-auths
     return json({ error: "Rail feed rejected the token." }, 502);
   }
-  if (!upstream.ok) {
-    return json({ error: `Rail feed error (${upstream.status}).` }, 502);
+  if (!primary.ok) {
+    return json({ error: `Rail feed error (${primary.status}).` }, 502);
   }
+  const data = await primary.json();
 
-  const data = await upstream.json();
+  // Second board, anchored at `to`, to read each train's time AT the target
+  // station. Merged by service id -> journey time (and long-way detection).
+  // One extra call per refresh, not per train.
+  const targetTimes = await fetchTargetTimes(accessToken, to, from);
+
   const services = (data.services || [])
-    .map((s) => normalise(s, to))
+    .map((s) => normalise(s, to, targetTimes))
     .filter((s) => s && s.std)
     .slice(0, 12);
 
@@ -71,6 +77,27 @@ export async function onRequestGet({ request, env }) {
     200,
     { "cache-control": "public, max-age=20, s-maxage=20" }
   );
+}
+
+/* Map serviceId -> ISO time at the target station (arrival preferred). */
+async function fetchTargetTimes(accessToken, target, origin) {
+  const map = {};
+  try {
+    const r = await fetch(`${BASE}/rtt/location?code=${NS}:${target}&filterFrom=${NS}:${origin}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!r.ok || r.status === 204) return map;
+    const d = await r.json();
+    for (const s of d.services || []) {
+      const uid = s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity;
+      const t = s.temporalData || {};
+      const arr = t.arrival || {};
+      const dep = t.departure || {};
+      const iso = arr.realtimeForecast || arr.scheduleAdvertised || arr.realtimeActual
+        || dep.realtimeForecast || dep.scheduleAdvertised || dep.realtimeActual;
+      if (uid && iso) map[uid] = iso;
+    }
+  } catch (e) { /* journey time simply omitted if this fails */ }
+  return map;
 }
 
 /* ---- Auth: refresh token -> short-life access token (cached) ---- */
@@ -95,7 +122,7 @@ async function getAccessToken(refreshToken) {
 }
 
 /* ---- Map one next-gen line-up object into the front-end shape ---- */
-function normalise(s, to) {
+function normalise(s, to, targetTimes) {
   const t = s.temporalData || {};
   const dep = t.departure || {};
   const meta = s.locationMetadata || {};
@@ -128,16 +155,28 @@ function normalise(s, to) {
   }
 
   const platform = meta.platform ? meta.platform.actual || meta.platform.planned || null : null;
-  const dest = (s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description) || "—";
+  const destLoc = s.destination && s.destination[0];
+  const dest = (destLoc && destLoc.location && destLoc.location.description) || "—";
   const operator = (sched.operator && sched.operator.name) || "South Western Railway";
   const mode = sched.modeType || "TRAIN";
 
+  // Journey length from this station to the TARGET station (Waterloo/your
+  // chosen stop for To London; New Malden for Home), using the merged time.
+  let journeyMins = null;
+  const uid = sched.uniqueIdentity;
+  const targetIso = uid && targetTimes ? targetTimes[uid] : null;
+  if (targetIso && bookedIso) {
+    const d = Math.round((Date.parse(targetIso) - Date.parse(bookedIso)) / 60000);
+    if (!Number.isNaN(d) && d > 0) journeyMins = d;
+  }
+
   return {
-    id: sched.uniqueIdentity || `${hhmm(bookedIso)}-${dest}`,
+    id: uid || `${hhmm(bookedIso)}-${dest}`,
     std: hhmm(bookedIso),
     etd,
     status,
     departed: !!dep.realtimeActual, // has it actually left this station yet?
+    journeyMins,
     platform,
     destination: dest,
     via: to === "NEM" ? "calls New Malden" : (mode !== "TRAIN" ? "rail replacement" : ""),
