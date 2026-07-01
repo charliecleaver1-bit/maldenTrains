@@ -29,44 +29,50 @@ export async function onRequestGet({ request, env }) {
   }
 
   // Diagnostic: /api/service?debug=1&from=WAT&to=NEM
-  // Picks the next train on that board and dumps its raw associations so we
-  // can see whether the feed provides FORM_FROM turnaround links.
+  // Picks a TERMINATING train (not a loop) and probes the detailed flag three
+  // ways, so we can see whether the feed exposes FORM_FROM turnaround links.
   if (debug) {
     const from = (url.searchParams.get("from") || "WAT").toUpperCase();
     const to = (url.searchParams.get("to") || "NEM").toUpperCase();
+    const NAMES = { WAT:"London Waterloo", NEM:"New Malden", VXH:"Vauxhall", CLJ:"Clapham Junction", EAD:"Earlsfield", WIM:"Wimbledon" };
     let bd = {};
     try {
       const br = await fetch(`${BASE}/rtt/location?code=gb-nr:${from}&filterTo=gb-nr:${to}`,
         { headers: { Authorization: `Bearer ${accessToken}` } });
       bd = br.ok ? await br.json() : {};
     } catch (e) { return json({ debug: true, error: "board fetch failed" }); }
-    const first = (bd.services || [])[0];
-    const uid = first && first.scheduleMetadata && first.scheduleMetadata.uniqueIdentity;
-    if (!uid) return json({ debug: true, from, to, error: "no services on that board" });
-    const svc = await fetchService(accessToken, uid);
-    if (!svc || svc.__error) return json({ debug: true, uid, error: (svc && svc.__error) || "service fetch failed" });
-    const locs = svc.locations || [];
-    const associations = [];
-    for (const l of locs) {
-      for (const a of (l.associatedServices || [])) {
-        associations.push({
-          at: l.location && l.location.description,
-          type: a.associationData && a.associationData.associationType,
-          isPublic: a.associationData && a.associationData.isPublic,
-          assocUid: a.scheduleMetadata && a.scheduleMetadata.uniqueIdentity,
-        });
-      }
+
+    const services = bd.services || [];
+    const boardSample = services.slice(0, 10).map((s) => ({
+      uid: s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity,
+      dest: s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description,
+    }));
+    const fromName = NAMES[from] || from;
+    // prefer a train that terminates somewhere other than where it started (not a loop)
+    const pick = boardSample.find((x) => x.uid && x.dest && x.dest !== fromName) || boardSample[0];
+    if (!pick || !pick.uid) return json({ debug: true, from, to, boardSample, error: "no service to test" });
+
+    const variants = {};
+    const probes = [["detailed_true", "&detailed=true"], ["detailed_1", "&detailed=1"], ["no_detailed", ""]];
+    for (const [label, suffix] of probes) {
+      try {
+        const r = await fetch(`${BASE}/rtt/service?uniqueIdentity=${encodeURIComponent(pick.uid)}${suffix}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } });
+        if (!r.ok) { variants[label] = { status: r.status }; continue; }
+        const d = await r.json();
+        const svc2 = d.service || d;
+        const locs = svc2.locations || [];
+        let count = 0; const types = [];
+        for (const l of locs) for (const a of (l.associatedServices || [])) { count++; types.push(a.associationData && a.associationData.associationType); }
+        variants[label] = {
+          origin: locs[0] && locs[0].location && locs[0].location.description,
+          dest: locs[locs.length - 1] && locs[locs.length - 1].location && locs[locs.length - 1].location.description,
+          assocCount: count, types,
+          firstLocKeys: locs[0] ? Object.keys(locs[0]) : [],
+        };
+      } catch (e) { variants[label] = { error: String(e) }; }
     }
-    return json({
-      debug: true, uid, from, to,
-      origin: locs[0] && locs[0].location && locs[0].location.description,
-      destination: locs[locs.length - 1] && locs[locs.length - 1].location && locs[locs.length - 1].location.description,
-      locationCount: locs.length,
-      associationsFound: associations.length,
-      associations,
-      firstLocationKeys: locs[0] ? Object.keys(locs[0]) : [],
-      serviceKeys: Object.keys(svc),
-    });
+    return json({ debug: true, from, to, tested: pick, boardSample, variants });
   }
 
   const svc = await fetchService(accessToken, id);
