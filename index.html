@@ -751,11 +751,12 @@ function inboundHTML(inb){
   const cls = inb.lateMins > 0 ? "late" : "ontime";
   const dot = inb.lateMins > 0 ? "bad" : "ok";
   const due = inb.dueArr ? `the ${inb.dueArr} ` : "the inbound ";
+  const plat = inb.platform ? ` · Plat ${esc(inb.platform)}` : "";
   const { caption } = computePosition(inb.stops || []);
   return `<div class="inbound">
     <button class="inbound-toggle" aria-expanded="false" onclick="toggleInbound(this)">
       <span class="inb-dot ${dot}"></span>
-      <span class="inb-lbl">Formed by ${due}from ${esc(inb.origin||"—")} · <b class="${cls}">${late}</b></span>
+      <span class="inb-lbl">Formed by ${due}from ${esc(inb.origin||"—")}${plat} · <b class="${cls}">${late}</b></span>
       <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
     <div class="inbound-body">
@@ -825,7 +826,8 @@ function updateInboundSummary(panel, inb){
   const late = inb.lateMins>0 ? `${inb.lateMins} min late` : "on time";
   const cls = inb.lateMins>0 ? "late" : "ontime";
   const due = inb.dueArr ? `the ${inb.dueArr} ` : "the inbound ";
-  if(lbl) lbl.innerHTML = `Formed by ${due}from ${esc(inb.origin||"—")} · <b class="${cls}">${late}</b>`;
+  const plat = inb.platform ? ` · Plat ${esc(inb.platform)}` : "";
+  if(lbl) lbl.innerHTML = `Formed by ${due}from ${esc(inb.origin||"—")}${plat} · <b class="${cls}">${late}</b>`;
   if(dot) dot.className = `inb-dot ${inb.lateMins>0?"bad":"ok"}`;
 }
 
@@ -862,22 +864,31 @@ function demoService(s){
     return { name:nm, time:t, dep:t, arr:t, platform:(i%4)+1, departed: tMs < now, arrived: tMs < now - 30000 };
   });
 
-  // Home departures start at a terminus, so demo a train that forms them.
-  let inbound = null;
-  if(!out){
-    const inChain = ["Woking","Surbiton","New Malden","Raynes Park","Wimbledon","Earlsfield","Clapham Junction","Vauxhall","London Waterloo"];
-    const lastIdx = inChain.length-1;
-    const late = 4;                    // demo: inbound running 4 late
-    const arrAtTerminus = base - 6;    // due in ~6 min before it turns around
-    const inStops = inChain.map((nm,i)=>{
-      const t = toHHMM(arrAtTerminus - (lastIdx-i)*4 + late);
-      const tMs = toMs(t);
-      return { name:nm, time:t, dep:t, arr:t, platform:(i%3)+1, departed: tMs < now, arrived: tMs < now - 30000 };
-    });
-    inbound = { id:"demo-in", origin:"Woking", destination:"London Waterloo",
-      operator:"South Western Railway", stops:inStops, lateMins:late,
-      dueArr:toHHMM(arrAtTerminus), expectedArr:toHHMM(arrAtTerminus+late) };
-  }
+  // Every service is formed by a previous train at its ORIGIN terminus —
+  // Waterloo for Home trains, an outer terminus (Woking/Shepperton/…) for
+  // To London trains. Demo one that terminates at this train's origin.
+  const term = chain[0];
+  const feeders = {
+    "London Waterloo": ["Woking","Surbiton","New Malden","Wimbledon","Clapham Junction","Vauxhall","London Waterloo"],
+    "Woking":          ["Basingstoke","Fleet","Farnborough","Brookwood","Woking"],
+    "Shepperton":      ["London Waterloo","Wimbledon","Raynes Park","Fulwell","Shepperton"],
+    "Hampton Court":   ["London Waterloo","Wimbledon","Surbiton","Thames Ditton","Hampton Court"],
+  };
+  const platForTerm = { "London Waterloo":"12", "Woking":"4", "Shepperton":"2", "Hampton Court":"1" };
+  const inChain = feeders[term] || ["Guildford","Woking",term];
+  const lastIdx = inChain.length-1;
+  const late = 4;                    // demo: inbound running 4 late
+  const arrAtTerminus = base - 6;    // due ~6 min before it turns around
+  const inStops = inChain.map((nm,i)=>{
+    const t = toHHMM(arrAtTerminus - (lastIdx-i)*4 + late);
+    const tMs = toMs(t);
+    return { name:nm, time:t, dep:t, arr:t, platform:(i%3)+1, departed: tMs < now, arrived: tMs < now - 30000 };
+  });
+  const inbound = {
+    id:"demo-in", origin:inChain[0], destination:term, operator:"South Western Railway",
+    stops:inStops, lateMins:late, dueArr:toHHMM(arrAtTerminus), expectedArr:toHHMM(arrAtTerminus+late),
+    platform: platForTerm[term] || "2",
+  };
 
   return { origin:chain[0], destination:chain[chain.length-1], stops, demo:true, inbound };
 }
