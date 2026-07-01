@@ -53,15 +53,20 @@ export async function onRequestGet({ request, env }) {
     if (!pick || !pick.uid) return json({ debug: true, from, to, boardSample, error: "no service to test" });
 
     const variants = {};
-    const probes = [
-      ["rtt_detailed", "/rtt/service", "&detailed=true"],
-      ["gbnr_detailed", "/gb-nr/service", "&detailed=true"],
-      ["gbnr_plain", "/gb-nr/service", ""],
+    const enc = encodeURIComponent;
+    const parts = String(pick.uid).split(":");        // ["gb-nr","L82759","2026-07-01"]
+    const identity = parts[1] || "";
+    const depDate = parts[2] || "";
+    const uidNoNs = parts.slice(1).join(":");          // "L82759:2026-07-01"
+    const probeUrls = [
+      ["rtt_detailed", `${BASE}/rtt/service?uniqueIdentity=${enc(pick.uid)}&detailed=true`],
+      ["gbnr_iddate_detailed", `${BASE}/gb-nr/service?identity=${enc(identity)}&departureDate=${enc(depDate)}&detailed=true`],
+      ["gbnr_iddate_plain", `${BASE}/gb-nr/service?identity=${enc(identity)}&departureDate=${enc(depDate)}`],
+      ["gbnr_uid_nons", `${BASE}/gb-nr/service?uniqueIdentity=${enc(uidNoNs)}&detailed=true`],
     ];
-    for (const [label, path, suffix] of probes) {
+    for (const [label, u] of probeUrls) {
       try {
-        const r = await fetch(`${BASE}${path}?uniqueIdentity=${encodeURIComponent(pick.uid)}${suffix}`,
-          { headers: { Authorization: `Bearer ${accessToken}` } });
+        const r = await fetch(u, { headers: { Authorization: `Bearer ${accessToken}` } });
         if (!r.ok) { variants[label] = { status: r.status }; continue; }
         const d = await r.json();
         const svc2 = d.service || d;
