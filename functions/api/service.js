@@ -1,9 +1,12 @@
 /**
  * Cloudflare Pages Function — GET /api/service?id=<uniqueIdentity>
  * --------------------------------------------------------------
- * Returns one train's full calling pattern plus where it currently is
- * on the line, as a small, ready-to-render shape. Called lazily (only
- * when the user taps "Where's this train?") to keep token use low.
+ * Returns one train's full calling pattern + current position. For a train
+ * that ORIGINATES at a terminus (e.g. a Home service starting at Waterloo),
+ * it also follows the "FORM_FROM" association to the inbound train that
+ * physically becomes it, and reports that inbound train's delay + position —
+ * so you can see a departure will slip before the feed admits it.
+ * Called lazily (only when the journey panel is open).
  */
 
 const BASE = "https://data.rtt.io";
@@ -24,20 +27,80 @@ export async function onRequestGet({ request, env }) {
     return json({ error: "Could not authenticate with the rail feed." }, 502);
   }
 
-  const q = `${BASE}/rtt/service?uniqueIdentity=${encodeURIComponent(id)}`;
+  const svc = await fetchService(accessToken, id);
+  if (svc && svc.__error) return json({ error: svc.__error }, svc.__status || 502);
+  if (!svc) return json({ error: "Service not found." }, 404);
+
+  const result = buildProgress(svc);
+
+  // Follow the turnaround: which inbound train forms this one at its origin?
+  const inboundId = findFormedFrom(svc);
+  if (inboundId) {
+    const inbound = await fetchService(accessToken, inboundId);
+    if (inbound && !inbound.__error) result.inbound = buildInbound(inbound);
+  }
+
+  return json(result, 200, { "cache-control": "public, max-age=20, s-maxage=20" });
+}
+
+/* Fetch one service in detailed mode (detailed surfaces the non-public
+   turnaround associations). Returns the service object, or {__error}. */
+async function fetchService(accessToken, id) {
+  const q = `${BASE}/rtt/service?uniqueIdentity=${encodeURIComponent(id)}&detailed=true`;
   let r;
   try {
     r = await fetch(q, { headers: { Authorization: `Bearer ${accessToken}` } });
   } catch (e) {
-    return json({ error: "Could not reach the rail data feed." }, 502);
+    return { __error: "Could not reach the rail data feed." };
   }
-  if (r.status === 404) return json({ error: "Service not found." }, 404);
-  if (r.status === 401) { cachedToken = null; return json({ error: "Token rejected." }, 502); }
-  if (!r.ok) return json({ error: `Rail feed error (${r.status}).` }, 502);
-
+  if (r.status === 404) return null;
+  if (r.status === 401) { cachedToken = null; return { __error: "Token rejected." }; }
+  if (!r.ok) return { __error: `Rail feed error (${r.status}).`, __status: 502 };
   const data = await r.json();
-  const svc = data.service || {};
-  return json(buildProgress(svc), 200, { "cache-control": "public, max-age=20, s-maxage=20" });
+  return data.service || null;
+}
+
+/* Look for the train that FORMS this one (i.e. arrives and becomes it),
+   normally at the origin terminus. Returns its uniqueIdentity, or null. */
+function findFormedFrom(svc) {
+  const locs = svc.locations || [];
+  for (const l of locs) {
+    const assoc = l.associatedServices || [];
+    for (const a of assoc) {
+      const type = a.associationData && a.associationData.associationType;
+      if (type === "FORM_FROM") {
+        const uid = a.scheduleMetadata && a.scheduleMetadata.uniqueIdentity;
+        if (uid) return uid;
+      }
+    }
+  }
+  return null;
+}
+
+/* Compact inbound summary: its stops (for a mini timeline), plus its delay
+   and times at the formation point (its terminus). */
+function buildInbound(svc) {
+  const p = buildProgress(svc);
+  const locs = svc.locations || [];
+  const last = locs[locs.length - 1] || {};
+  const arr = (last.temporalData && last.temporalData.arrival) || {};
+  const schedIso = arr.scheduleAdvertised || null;
+  const expIso = arr.realtimeActual || arr.realtimeForecast || arr.scheduleAdvertised || null;
+  let lateMins = 0;
+  if (schedIso && expIso) {
+    const d = Math.round((Date.parse(expIso) - Date.parse(schedIso)) / 60000);
+    if (!Number.isNaN(d)) lateMins = d;
+  }
+  return {
+    id: svc.scheduleMetadata && svc.scheduleMetadata.uniqueIdentity,
+    origin: p.origin,
+    destination: p.destination,
+    operator: p.operator,
+    stops: p.stops,
+    lateMins,
+    dueArr: hhmm(schedIso),
+    expectedArr: hhmm(expIso),
+  };
 }
 
 /* Turn the full service into a compact stop list + current position. */
