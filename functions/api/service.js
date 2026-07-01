@@ -91,6 +91,8 @@ function buildInbound(svc) {
     const d = Math.round((Date.parse(expIso) - Date.parse(schedIso)) / 60000);
     if (!Number.isNaN(d)) lateMins = d;
   }
+  const meta = (last.locationMetadata && last.locationMetadata.platform) || null;
+  const platform = meta ? (meta.actual || meta.planned || null) : null;
   return {
     id: svc.scheduleMetadata && svc.scheduleMetadata.uniqueIdentity,
     origin: p.origin,
@@ -100,6 +102,7 @@ function buildInbound(svc) {
     lateMins,
     dueArr: hhmm(schedIso),
     expectedArr: hhmm(expIso),
+    platform,
   };
 }
 
