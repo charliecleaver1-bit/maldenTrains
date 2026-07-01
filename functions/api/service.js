@@ -53,10 +53,14 @@ export async function onRequestGet({ request, env }) {
     if (!pick || !pick.uid) return json({ debug: true, from, to, boardSample, error: "no service to test" });
 
     const variants = {};
-    const probes = [["detailed_true", "&detailed=true"], ["detailed_1", "&detailed=1"], ["no_detailed", ""]];
-    for (const [label, suffix] of probes) {
+    const probes = [
+      ["rtt_detailed", "/rtt/service", "&detailed=true"],
+      ["gbnr_detailed", "/gb-nr/service", "&detailed=true"],
+      ["gbnr_plain", "/gb-nr/service", ""],
+    ];
+    for (const [label, path, suffix] of probes) {
       try {
-        const r = await fetch(`${BASE}/rtt/service?uniqueIdentity=${encodeURIComponent(pick.uid)}${suffix}`,
+        const r = await fetch(`${BASE}${path}?uniqueIdentity=${encodeURIComponent(pick.uid)}${suffix}`,
           { headers: { Authorization: `Bearer ${accessToken}` } });
         if (!r.ok) { variants[label] = { status: r.status }; continue; }
         const d = await r.json();
