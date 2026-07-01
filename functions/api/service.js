@@ -16,8 +16,9 @@ let cachedToken = null;
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
+  const debug = url.searchParams.get("debug");
   const id = url.searchParams.get("id");
-  if (!id) return json({ error: "Missing service id." }, 400);
+  if (!debug && !id) return json({ error: "Missing service id." }, 400);
   if (!env.RTT_TOKEN) return json({ error: "Live feed not configured." }, 503);
 
   let accessToken;
@@ -25,6 +26,47 @@ export async function onRequestGet({ request, env }) {
     accessToken = await getAccessToken(env.RTT_TOKEN);
   } catch (e) {
     return json({ error: "Could not authenticate with the rail feed." }, 502);
+  }
+
+  // Diagnostic: /api/service?debug=1&from=WAT&to=NEM
+  // Picks the next train on that board and dumps its raw associations so we
+  // can see whether the feed provides FORM_FROM turnaround links.
+  if (debug) {
+    const from = (url.searchParams.get("from") || "WAT").toUpperCase();
+    const to = (url.searchParams.get("to") || "NEM").toUpperCase();
+    let bd = {};
+    try {
+      const br = await fetch(`${BASE}/rtt/location?code=gb-nr:${from}&filterTo=gb-nr:${to}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } });
+      bd = br.ok ? await br.json() : {};
+    } catch (e) { return json({ debug: true, error: "board fetch failed" }); }
+    const first = (bd.services || [])[0];
+    const uid = first && first.scheduleMetadata && first.scheduleMetadata.uniqueIdentity;
+    if (!uid) return json({ debug: true, from, to, error: "no services on that board" });
+    const svc = await fetchService(accessToken, uid);
+    if (!svc || svc.__error) return json({ debug: true, uid, error: (svc && svc.__error) || "service fetch failed" });
+    const locs = svc.locations || [];
+    const associations = [];
+    for (const l of locs) {
+      for (const a of (l.associatedServices || [])) {
+        associations.push({
+          at: l.location && l.location.description,
+          type: a.associationData && a.associationData.associationType,
+          isPublic: a.associationData && a.associationData.isPublic,
+          assocUid: a.scheduleMetadata && a.scheduleMetadata.uniqueIdentity,
+        });
+      }
+    }
+    return json({
+      debug: true, uid, from, to,
+      origin: locs[0] && locs[0].location && locs[0].location.description,
+      destination: locs[locs.length - 1] && locs[locs.length - 1].location && locs[locs.length - 1].location.description,
+      locationCount: locs.length,
+      associationsFound: associations.length,
+      associations,
+      firstLocationKeys: locs[0] ? Object.keys(locs[0]) : [],
+      serviceKeys: Object.keys(svc),
+    });
   }
 
   const svc = await fetchService(accessToken, id);
