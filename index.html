@@ -175,6 +175,24 @@
   .htl-col.cx .htl-dot{border-color:var(--red);background:var(--ink);}
   .htl-col.cx .htl-name{color:var(--red);text-decoration:line-through;}
 
+  /* ---- Inbound (forming) train section ---- */
+  .inbound{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);}
+  .inbound-toggle{
+    appearance:none;background:transparent;border:0;cursor:pointer;width:100%;
+    display:flex;align-items:center;gap:9px;text-align:left;padding:2px 0;
+    color:var(--muted);font-family:var(--body);font-size:12.5px;transition:color .2s;
+  }
+  .inbound-toggle:hover{color:var(--text)}
+  .inb-dot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .inb-dot.ok{background:var(--green)}
+  .inb-dot.bad{background:var(--amber);animation:pulse 1.6s infinite}
+  .inb-lbl{flex:1;line-height:1.3}
+  .inb-lbl b.late{color:var(--amber)} .inb-lbl b.ontime{color:var(--green)}
+  .inbound-toggle .chev{flex:none;color:var(--muted-2);transition:transform .25s,color .2s}
+  .inbound-toggle[aria-expanded="true"] .chev{transform:rotate(180deg);color:var(--amber)}
+  .inbound-body{display:none;margin-top:10px}
+  .inbound-body.open{display:block;animation:fade .25s ease}
+
   /* ---- Station picker ---- */
   .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
   .station-lbl{font-size:12px;color:var(--muted);min-width:34px;}
@@ -306,6 +324,7 @@ let state = {
   services: [],
   updated: null,
   loading: false,
+  expandedId: null,     // id of the train whose journey panel is open
 };
 
 /* The current journey, derived from direction + chosen station.
@@ -482,6 +501,7 @@ function render(){
   const next = upcoming.find(s=>s.status!=="cancel") || upcoming[0];
   if(!next){
     heroSlot.innerHTML = `<div class="empty">No departures in the next two hours.</div>`;
+    if(state.expandedId){ state.expandedId = null; openProgress = null; stopProgressAutoRefresh(); }
   } else {
     const liveCls = state.source==="live" ? "live" : "live demo";
     const liveTxt = state.source==="live" ? "Live" : "Demo";
@@ -511,6 +531,14 @@ function render(){
         </button>
         <div class="progress" id="prog-${pkey}"></div>` : ""}
       </div>`;
+
+    // Keep the journey panel open across refreshes (same train still next).
+    if(showProg && state.expandedId && next.id === state.expandedId){
+      openPanel(pkey, true);   // silent: don't flash the "finding…" placeholder
+    } else if(state.expandedId){
+      // the previously-open train is no longer next — tidy up
+      state.expandedId = null; openProgress = null; stopProgressAutoRefresh();
+    }
   }
 
   // --- later list (skip the hero train) ---
@@ -553,17 +581,57 @@ function keyFor(s){ return "s" + String(s.id || (s.std + s.destination)).replace
 
 async function toggleProgress(key){
   const panel = document.getElementById("prog-" + key);
+  if(!panel) return;
+  if(panel.classList.contains("open")) closePanel(key);
+  else await openPanel(key, false);
+}
+
+async function openPanel(key, silent){
+  const panel = document.getElementById("prog-" + key);
   const tog = document.getElementById("tog-" + key);
   if(!panel) return;
-  const open = panel.classList.toggle("open");
-  if(tog) tog.setAttribute("aria-expanded", open ? "true" : "false");
-  if(open && panel.dataset.loaded !== "1"){
-    panel.innerHTML = `<div class="prog-cap">Finding the train…</div>`;
-    const data = await loadService(progressTargets[key]);
-    renderProgress(panel, data);
-    panel.dataset.loaded = "1";
-  }
+  panel.classList.add("open");
+  if(tog) tog.setAttribute("aria-expanded", "true");
+  const target = progressTargets[key];
+  state.expandedId = target ? target.id : null;
+  if(!silent) panel.innerHTML = `<div class="prog-cap">Finding the train…</div>`;
+  const data = await loadService(target);
+  renderProgress(panel, data);              // (re)establishes openProgress
+  if(openProgress){ openProgress.target = target; openProgress.key = key; }
+  startProgressAutoRefresh();
 }
+
+function closePanel(key){
+  const panel = document.getElementById("prog-" + key);
+  const tog = document.getElementById("tog-" + key);
+  if(panel) panel.classList.remove("open");
+  if(tog) tog.setAttribute("aria-expanded", "false");
+  state.expandedId = null;
+  openProgress = null;
+  stopProgressAutoRefresh();
+}
+
+/* Auto-refresh the OPEN journey timeline in the background. The marker also
+   creeps every second locally (no calls); this just pulls fresh real data.
+   15s while open ≈ 4 calls/min — comfortably inside the feed's limits, and
+   only while you're actually watching a train. */
+let progressTimer = null;
+const PROGRESS_REFRESH_MS = 15000;
+function startProgressAutoRefresh(){
+  stopProgressAutoRefresh();
+  progressTimer = setInterval(async ()=>{
+    const op = openProgress;
+    if(!op || !document.body.contains(op.panel) || !op.panel.classList.contains("open")){ stopProgressAutoRefresh(); return; }
+    const data = await loadService(op.target);
+    if(data && Array.isArray(data.stops) && data.stops.length){
+      op.out.stops = data.stops;
+      if(hasInbound(data)){ op.in = { stops:data.inbound.stops }; updateInboundSummary(op.panel, data.inbound); }
+      op.demo = !!data.demo;
+      updateOpenProgress();   // move markers in place, no flicker, keeps scroll
+    }
+  }, PROGRESS_REFRESH_MS);
+}
+function stopProgressAutoRefresh(){ if(progressTimer){ clearInterval(progressTimer); progressTimer = null; } }
 
 async function loadService(s){
   if(!s) return { stops:[], caption:"No information." };
@@ -632,52 +700,118 @@ function progressCols(stops, pos){
   }).join("");
 }
 
+/* One horizontal timeline (reused for the outbound and the inbound train). */
+function timelineHTML(stops, W, roleClass){
+  const n = stops.length;
+  const { pos } = computePosition(stops);
+  const lineW=(n-1)*W, fillW=pos*W, headX=pos*W+W/2;
+  return `<div class="htl ${roleClass}">
+    <div class="htl-track" style="width:${n*W}px">
+      <div class="htl-line" style="left:${W/2}px;width:${lineW}px"></div>
+      <div class="htl-fill" data-fill style="left:${W/2}px;width:${fillW}px"></div>
+      <div class="htl-head" data-head style="left:${headX}px"></div>
+      <div class="htl-cols">${progressCols(stops, pos)}</div>
+    </div>
+  </div>`;
+}
+
+/* The "formed by inbound train" section (Home departures from a terminus). */
+function inboundHTML(inb){
+  const late = inb.lateMins > 0 ? `${inb.lateMins} min late` : "on time";
+  const cls = inb.lateMins > 0 ? "late" : "ontime";
+  const dot = inb.lateMins > 0 ? "bad" : "ok";
+  const due = inb.dueArr ? `the ${inb.dueArr} ` : "the inbound ";
+  const { caption } = computePosition(inb.stops || []);
+  return `<div class="inbound">
+    <button class="inbound-toggle" aria-expanded="false" onclick="toggleInbound(this)">
+      <span class="inb-dot ${dot}"></span>
+      <span class="inb-lbl">Formed by ${due}from ${esc(inb.origin||"—")} · <b class="${cls}">${late}</b></span>
+      <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
+    <div class="inbound-body">
+      <div class="prog-cap" data-incap>Inbound train · ${esc(caption||"")}</div>
+      ${timelineHTML(inb.stops || [], 70, "htl-in")}
+    </div>
+  </div>`;
+}
+
+function hasInbound(data){ return data && data.inbound && data.inbound.stops && data.inbound.stops.length; }
+
 function renderProgress(panel, data){
   if(!data.stops || !data.stops.length){
     panel.innerHTML = `<div class="prog-cap">No live stop information for this train.</div>`;
     openProgress = null;
     return;
   }
-  const stops = data.stops, n = stops.length, W = 70;
-  const { pos, caption } = computePosition(stops);
-  const lineW = (n-1)*W, fillW = pos*W, headX = pos*W + W/2;
-
+  const { caption } = computePosition(data.stops);
   panel.innerHTML = `
     <div class="prog-cap" data-cap>${data.demo?`<span class="demo-chip">demo</span> `:""}${esc(caption||"")}</div>
-    <div class="htl">
-      <div class="htl-track" style="width:${n*W}px">
-        <div class="htl-line" style="left:${W/2}px;width:${lineW}px"></div>
-        <div class="htl-fill" data-fill style="left:${W/2}px;width:${fillW}px"></div>
-        <div class="htl-head" data-head style="left:${headX}px"></div>
-        <div class="htl-cols">${progressCols(stops, pos)}</div>
-      </div>
-    </div>`;
+    ${timelineHTML(data.stops, 70, "htl-out")}
+    ${hasInbound(data) ? inboundHTML(data.inbound) : ""}`;
 
   requestAnimationFrame(()=>{
-    const outer = panel.querySelector(".htl");
-    if(outer) outer.scrollLeft = Math.max(0, headX - outer.clientWidth/2);
+    const outer = panel.querySelector(".htl-out");
+    const head = outer && outer.querySelector("[data-head]");
+    if(outer && head) outer.scrollLeft = Math.max(0, (parseFloat(head.style.left)||0) - outer.clientWidth/2);
   });
 
-  openProgress = { panel, stops, n, W, demo:!!data.demo };
+  openProgress = { panel, W:70, out:{stops:data.stops},
+    in: hasInbound(data)?{stops:data.inbound.stops}:null, demo:!!data.demo };
 }
 
-/* Called every second from tick() — nudges the marker along between stops
-   without any new API calls. */
+/* Move one timeline's marker/classes/caption in place (no rebuild). */
+function applyPos(container, stops, capEl, capPrefix, demo){
+  if(!container || !stops) return;
+  const { pos, caption } = computePosition(stops);
+  const fill = container.querySelector("[data-fill]");
+  const head = container.querySelector("[data-head]");
+  if(fill) fill.style.width = (pos*70) + "px";
+  if(head) head.style.left = (pos*70 + 35) + "px";
+  if(capEl) capEl.innerHTML = `${demo?`<span class="demo-chip">demo</span> `:""}${capPrefix||""}${esc(caption||"")}`;
+  container.querySelectorAll(".htl-col").forEach((c,i)=>{
+    c.classList.toggle("done", pos > i + 0.08);
+    c.classList.toggle("now", Math.abs(pos - i) <= 0.12);
+  });
+}
+
+/* Called every second from tick() — nudges markers along (no API calls). */
 function updateOpenProgress(){
   const op = openProgress;
   if(!op) return;
   if(!document.body.contains(op.panel) || !op.panel.classList.contains("open")){ openProgress = null; return; }
-  const { pos, caption } = computePosition(op.stops);
-  const fill = op.panel.querySelector("[data-fill]");
-  const head = op.panel.querySelector("[data-head]");
-  const cap  = op.panel.querySelector("[data-cap]");
-  if(fill) fill.style.width = (pos*op.W) + "px";
-  if(head) head.style.left = (pos*op.W + op.W/2) + "px";
-  if(cap)  cap.innerHTML = `${op.demo?`<span class="demo-chip">demo</span> `:""}${esc(caption||"")}`;
-  op.panel.querySelectorAll(".htl-col").forEach((c,i)=>{
-    c.classList.toggle("done", pos > i + 0.08);
-    c.classList.toggle("now", Math.abs(pos - i) <= 0.12);
-  });
+  applyPos(op.panel.querySelector(".htl-out"), op.out.stops, op.panel.querySelector("[data-cap]"), "", op.demo);
+  if(op.in){
+    const body = op.panel.querySelector(".inbound-body");
+    if(body && body.classList.contains("open"))
+      applyPos(op.panel.querySelector(".htl-in"), op.in.stops, op.panel.querySelector("[data-incap]"), "Inbound train · ", false);
+  }
+}
+
+/* Refresh the inbound summary label (delay may have changed). */
+function updateInboundSummary(panel, inb){
+  if(!inb) return;
+  const lbl = panel.querySelector(".inb-lbl");
+  const dot = panel.querySelector(".inb-dot");
+  const late = inb.lateMins>0 ? `${inb.lateMins} min late` : "on time";
+  const cls = inb.lateMins>0 ? "late" : "ontime";
+  const due = inb.dueArr ? `the ${inb.dueArr} ` : "the inbound ";
+  if(lbl) lbl.innerHTML = `Formed by ${due}from ${esc(inb.origin||"—")} · <b class="${cls}">${late}</b>`;
+  if(dot) dot.className = `inb-dot ${inb.lateMins>0?"bad":"ok"}`;
+}
+
+function toggleInbound(btn){
+  const body = btn.parentElement.querySelector(".inbound-body");
+  if(!body) return;
+  const open = body.classList.toggle("open");
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  if(open){
+    updateOpenProgress();
+    requestAnimationFrame(()=>{
+      const outer = body.querySelector(".htl-in");
+      const head = outer && outer.querySelector("[data-head]");
+      if(outer && head) outer.scrollLeft = Math.max(0, (parseFloat(head.style.left)||0) - outer.clientWidth/2);
+    });
+  }
 }
 
 /* Believable stand-in journey (with a live, moving position) for demo mode. */
@@ -697,7 +831,25 @@ function demoService(s){
     const tMs = toMs(t);
     return { name:nm, time:t, dep:t, arr:t, platform:(i%4)+1, departed: tMs < now, arrived: tMs < now - 30000 };
   });
-  return { origin:chain[0], destination:chain[chain.length-1], stops, demo:true };
+
+  // Home departures start at a terminus, so demo a train that forms them.
+  let inbound = null;
+  if(!out){
+    const inChain = ["Woking","Surbiton","New Malden","Raynes Park","Wimbledon","Earlsfield","Clapham Junction","Vauxhall","London Waterloo"];
+    const lastIdx = inChain.length-1;
+    const late = 4;                    // demo: inbound running 4 late
+    const arrAtTerminus = base - 6;    // due in ~6 min before it turns around
+    const inStops = inChain.map((nm,i)=>{
+      const t = toHHMM(arrAtTerminus - (lastIdx-i)*4 + late);
+      const tMs = toMs(t);
+      return { name:nm, time:t, dep:t, arr:t, platform:(i%3)+1, departed: tMs < now, arrived: tMs < now - 30000 };
+    });
+    inbound = { id:"demo-in", origin:"Woking", destination:"London Waterloo",
+      operator:"South Western Railway", stops:inStops, lateMins:late,
+      dueArr:toHHMM(arrAtTerminus), expectedArr:toHHMM(arrAtTerminus+late) };
+  }
+
+  return { origin:chain[0], destination:chain[chain.length-1], stops, demo:true, inbound };
 }
 
 function parseHHMM(s){ if(!s) return 480; const p=s.split(":"); return (+p[0])*60 + (+p[1]); }
