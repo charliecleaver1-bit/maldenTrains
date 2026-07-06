@@ -137,6 +137,7 @@
 
   .ontime{color:var(--green)} .late{color:var(--amber)} .cancel{color:var(--red)}
   .jt{color:var(--muted);font-weight:400;}
+  .fast-badge{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#0B0E13;background:linear-gradient(180deg,var(--amber),#e0a52f);border-radius:5px;padding:2px 6px;vertical-align:middle;}
 
   /* ---- Journey progress (collapsible) ---- */
   .progress-toggle{
@@ -429,6 +430,21 @@ function visibleServices(all){
   return all.filter(s => isBoardable(s) && !isLongWay(s));
 }
 
+/* The journey time of the notably-fastest upcoming train — only returns a
+   value when it's at least 3 min quicker than the next-fastest, so we don't
+   badge a train when they're all much of a muchness. */
+function fastestValue(list){
+  const mins = list
+    .filter(s => s.status!=="cancel" && typeof s.journeyMins==="number" && s.journeyMins>0)
+    .map(s => s.journeyMins);
+  const distinct = [...new Set(mins)].sort((a,b)=>a-b);
+  if(distinct.length < 2) return null;
+  return (distinct[1] - distinct[0] >= 3) ? distinct[0] : null;
+}
+function isFastest(s, fastest){
+  return fastest !== null && typeof s.journeyMins==="number" && s.journeyMins === fastest;
+}
+
 /* Turn an "HH:MM" (or live "HHMM") into a ms timestamp near now,
    rolling to tomorrow if it's well in the past (late-night trains). */
 function toMs(t, fallbackMs){
@@ -473,10 +489,20 @@ function statusLine(s){
   return `<span class="ontime">On time</span>${jt}`;
 }
 
-/* "· 22 min to Waterloo" — how long the trip takes to the target station. */
+/* "· 22 min · arr Waterloo 08:34" — trip length and arrival at the target. */
 function journeyText(s){
   if(typeof s.journeyMins !== "number" || s.journeyMins <= 0) return "";
-  return ` <span class="jt">· ${s.journeyMins} min to ${esc(targetName())}</span>`;
+  const a = arrTime(s);
+  const arr = a ? ` · arr ${esc(targetName())} ${a}` : "";
+  return ` <span class="jt">· ${s.journeyMins} min${arr}</span>`;
+}
+
+/* Expected arrival at the target = (expected) departure + journey minutes. */
+function arrTime(s){
+  if(typeof s.journeyMins !== "number" || s.journeyMins <= 0) return null;
+  const base = s.etdMs || s.depMs;
+  if(!base) return null;
+  return hhmm(new Date(base + s.journeyMins*60000));
 }
 
 /* Short name of the station this journey is timed to. */
@@ -495,6 +521,7 @@ function render(){
 
   const all = normalise(state.services);
   const upcoming = visibleServices(all);
+  const fastest = fastestValue(upcoming);   // journeyMins of the notably-quickest train, or null
 
   // --- alert banner (derived from the upcoming services) ---
   const al = document.getElementById("alert"), alt=document.getElementById("alert-txt");
@@ -518,7 +545,7 @@ function render(){
     const showProg = next.status !== "cancel";
     heroSlot.innerHTML = `
       <div class="hero">
-        <div class="eyebrow">Next ${state.dir==="out"?"to London":"home"} · <span class="${liveCls}"><i></i>${liveTxt}</span></div>
+        <div class="eyebrow">Next ${state.dir==="out"?"to London":"home"} · <span class="${liveCls}"><i></i>${liveTxt}</span>${isFastest(next,fastest)?` · <span class="fast-badge">Fastest</span>`:""}</div>
         <div class="dest">${esc(next.destination)}</div>
         <div class="via">${esc(viaText(next))}</div>
         <div class="row">
@@ -557,7 +584,7 @@ function render(){
         <div class="${cls}" ${canExpand?`role="button" tabindex="0" aria-expanded="false" id="tog-${rkey}" onclick="toggleProgress('${rkey}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProgress('${rkey}')}"`:""}>
         <div class="stime">${s.stdLabel}</div>
         <div class="mid">
-          <div class="d">${esc(s.destination)}</div>
+          <div class="d">${esc(s.destination)}${isFastest(s,fastest)?` <span class="fast-badge">Fastest</span>`:""}</div>
           <div class="s">${statusLine(s)}</div>
           ${viaText(s)?`<div class="tag">${esc(viaText(s))}</div>`:""}
         </div>
