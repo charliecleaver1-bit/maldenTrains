@@ -61,13 +61,23 @@ export async function onRequestGet({ request, env }) {
     return json({ error: `Rail feed error (${primary.status}).` }, 502);
   }
   const data = await primary.json();
+  const primaryServices = data.services || [];
 
   // Second board, anchored at `to`, to read each train's time AT the target
-  // station. Merged by service id -> journey time (and long-way detection).
-  // One extra call per refresh, not per train.
-  const targetTimes = await fetchTargetTimes(accessToken, to, from);
+  // station. Widen its window to span this board's trains (plus travel time),
+  // otherwise the later departures have no matching arrival and get no journey
+  // time. Merged by service id. One extra call per refresh, not per train.
+  let minIso = null, maxIso = null;
+  for (const s of primaryServices) {
+    const dep = (s.temporalData || {}).departure || {};
+    const iso = dep.scheduleAdvertised || dep.realtimeForecast;
+    if (!iso) continue;
+    if (!minIso || iso < minIso) minIso = iso;
+    if (!maxIso || iso > maxIso) maxIso = iso;
+  }
+  const targetTimes = await fetchTargetTimes(accessToken, to, from, minIso, maxIso);
 
-  const services = (data.services || [])
+  const services = primaryServices
     .map((s) => normalise(s, to, targetTimes))
     .filter((s) => s && s.std)
     .slice(0, 12);
@@ -79,11 +89,16 @@ export async function onRequestGet({ request, env }) {
   );
 }
 
-/* Map serviceId -> ISO time at the target station (arrival preferred). */
-async function fetchTargetTimes(accessToken, target, origin) {
+/* Map serviceId -> ISO time at the target station (arrival preferred).
+   The [minIso, maxIso] window (this board's first/last departure) is widened
+   by −10 / +100 min so every train on the board has a matching far-end time. */
+async function fetchTargetTimes(accessToken, target, origin, minIso, maxIso) {
   const map = {};
   try {
-    const r = await fetch(`${BASE}/rtt/location?code=${NS}:${target}&filterFrom=${NS}:${origin}`,
+    let qs = `code=${NS}:${target}&filterFrom=${NS}:${origin}`;
+    if (minIso) qs += `&timeFrom=${encodeURIComponent(shiftLocalIso(minIso, -10))}`;
+    if (maxIso) qs += `&timeTo=${encodeURIComponent(shiftLocalIso(maxIso, 100))}`;
+    const r = await fetch(`${BASE}/rtt/location?${qs}`,
       { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!r.ok || r.status === 204) return map;
     const d = await r.json();
@@ -98,6 +113,17 @@ async function fetchTargetTimes(accessToken, target, origin) {
     }
   } catch (e) { /* journey time simply omitted if this fails */ }
   return map;
+}
+
+/* Shift a wall-clock ISO ("…THH:MM…") by N minutes, returned as a local
+   (no-offset) datetime string — RTT reads it in the location's timezone. */
+function shiftLocalIso(iso, deltaMin) {
+  const m = iso && iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return "";
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0));
+  d.setUTCMinutes(d.getUTCMinutes() + deltaMin);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:00`;
 }
 
 /* ---- Auth: refresh token -> short-life access token (cached) ---- */
@@ -168,6 +194,17 @@ function normalise(s, to, targetTimes) {
   if (targetIso && bookedIso) {
     const d = Math.round((Date.parse(targetIso) - Date.parse(bookedIso)) / 60000);
     if (!Number.isNaN(d) && d > 0) journeyMins = d;
+  }
+  // Fallback: if the train TERMINATES at the target (e.g. To London → Waterloo),
+  // the terminus time is already in this response — use it when unmatched.
+  if (journeyMins === null && bookedIso) {
+    const destCodes = (destLoc && destLoc.location && destLoc.location.shortCodes) || [];
+    const destTd = destLoc && destLoc.temporalData;
+    const destIso = destTd && (destTd.realtimeForecast || destTd.scheduleAdvertised || destTd.realtimeActual);
+    if (destCodes.indexOf(to) !== -1 && destIso) {
+      const d = Math.round((Date.parse(destIso) - Date.parse(bookedIso)) / 60000);
+      if (!Number.isNaN(d) && d > 0) journeyMins = d;
+    }
   }
 
   return {
