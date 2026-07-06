@@ -752,11 +752,12 @@ function inboundHTML(inb){
   const dot = inb.lateMins > 0 ? "bad" : "ok";
   const due = inb.dueArr ? `the ${inb.dueArr} ` : "the inbound ";
   const plat = inb.platform ? ` · Plat ${esc(inb.platform)}` : "";
+  const lead = inb.inferred ? "Likely formed by" : "Formed by";
   const { caption } = computePosition(inb.stops || []);
   return `<div class="inbound">
     <button class="inbound-toggle" aria-expanded="false" onclick="toggleInbound(this)">
       <span class="inb-dot ${dot}"></span>
-      <span class="inb-lbl">Formed by ${due}from ${esc(inb.origin||"—")}${plat} · <b class="${cls}">${late}</b></span>
+      <span class="inb-lbl">${lead} ${due}from ${esc(inb.origin||"—")}${plat} · <b class="${cls}">${late}</b></span>
       <svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
     </button>
     <div class="inbound-body">
@@ -827,7 +828,8 @@ function updateInboundSummary(panel, inb){
   const cls = inb.lateMins>0 ? "late" : "ontime";
   const due = inb.dueArr ? `the ${inb.dueArr} ` : "the inbound ";
   const plat = inb.platform ? ` · Plat ${esc(inb.platform)}` : "";
-  if(lbl) lbl.innerHTML = `Formed by ${due}from ${esc(inb.origin||"—")}${plat} · <b class="${cls}">${late}</b>`;
+  const lead = inb.inferred ? "Likely formed by" : "Formed by";
+  if(lbl) lbl.innerHTML = `${lead} ${due}from ${esc(inb.origin||"—")}${plat} · <b class="${cls}">${late}</b>`;
   if(dot) dot.className = `inb-dot ${inb.lateMins>0?"bad":"ok"}`;
 }
 
@@ -887,7 +889,7 @@ function demoService(s){
   const inbound = {
     id:"demo-in", origin:inChain[0], destination:term, operator:"South Western Railway",
     stops:inStops, lateMins:late, dueArr:toHHMM(arrAtTerminus), expectedArr:toHHMM(arrAtTerminus+late),
-    platform: platForTerm[term] || "2",
+    platform: platForTerm[term] || "2", inferred:true,
   };
 
   return { origin:chain[0], destination:chain[chain.length-1], stops, demo:true, inbound };
