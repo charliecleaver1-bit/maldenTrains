@@ -41,7 +41,19 @@ export async function onRequestGet({ request, env }) {
     if (debug === "journey") {
       const grab = async (u) => { try { const r = await fetch(u, { headers: { Authorization: `Bearer ${accessToken}` } }); return r.ok ? await r.json() : { __status: r.status }; } catch (e) { return { __err: String(e) }; } };
       const pd = await grab(`${BASE}/rtt/location?code=gb-nr:${from}&filterTo=gb-nr:${to}`);
-      const td = await grab(`${BASE}/rtt/location?code=gb-nr:${to}&filterFrom=gb-nr:${from}`);
+      const pservices = pd.services || [];
+      let minIso = null, maxIso = null;
+      for (const s of pservices) {
+        const dep = (s.temporalData || {}).departure || {};
+        const iso = dep.scheduleAdvertised || dep.realtimeForecast;
+        if (!iso) continue;
+        if (!minIso || iso < minIso) minIso = iso;
+        if (!maxIso || iso > maxIso) maxIso = iso;
+      }
+      let tqs = `code=gb-nr:${to}&filterFrom=gb-nr:${from}`;
+      if (minIso) tqs += `&timeFrom=${encodeURIComponent(shiftLocalIso(minIso, -10))}`;
+      if (maxIso) tqs += `&timeTo=${encodeURIComponent(shiftLocalIso(maxIso, 100))}`;
+      const td = await grab(`${BASE}/rtt/location?${tqs}`);
       const tmap = {};
       for (const s of (td.services || [])) {
         const uid = s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity;
@@ -49,18 +61,24 @@ export async function onRequestGet({ request, env }) {
         const iso = arr.realtimeForecast || arr.scheduleAdvertised || arr.realtimeActual || dep.realtimeForecast || dep.scheduleAdvertised || dep.realtimeActual;
         if (uid && iso) tmap[uid] = iso;
       }
-      const rows = (pd.services || []).slice(0, 12).map((s) => {
+      const rows = pservices.slice(0, 12).map((s) => {
         const uid = s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity;
         const dep = (s.temporalData || {}).departure || {};
         const bookedIso = dep.scheduleAdvertised || dep.realtimeForecast || dep.realtimeActual;
-        const targetIso = tmap[uid];
+        let targetIso = tmap[uid], via = "matched";
+        const destLoc = s.destination && s.destination[0];
+        if (!targetIso) {
+          const codes = (destLoc && destLoc.location && destLoc.location.shortCodes) || [];
+          const dtd = destLoc && destLoc.temporalData;
+          const diso = dtd && (dtd.realtimeForecast || dtd.scheduleAdvertised || dtd.realtimeActual);
+          if (codes.indexOf(to) !== -1 && diso) { targetIso = diso; via = "terminus-fallback"; }
+        }
         let jm = null;
         if (targetIso && bookedIso) { const d = Math.round((Date.parse(targetIso) - Date.parse(bookedIso)) / 60000); if (!Number.isNaN(d) && d > 0) jm = d; }
-        return { uid, dest: s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description, matched: !!targetIso, journeyMins: jm };
+        return { dest: destLoc && destLoc.location && destLoc.location.description, via: jm ? via : "none", journeyMins: jm };
       });
       return json({ debug: "journey", from, to,
-        primaryCount: (pd.services || []).length, primaryStatus: pd.__status || 200,
-        targetCount: (td.services || []).length, targetStatus: td.__status || 200,
+        primaryCount: pservices.length, targetCount: (td.services || []).length,
         targetMapSize: Object.keys(tmap).length, rows });
     }
 
