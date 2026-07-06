@@ -34,23 +34,66 @@ export async function onRequestGet({ request, env }) {
   if (debug) {
     const from = (url.searchParams.get("from") || "WAT").toUpperCase();
     const to = (url.searchParams.get("to") || "NEM").toUpperCase();
-    const NAMES = { WAT:"London Waterloo", NEM:"New Malden", VXH:"Vauxhall", CLJ:"Clapham Junction", EAD:"Earlsfield", WIM:"Wimbledon" };
-    let bd = {};
-    try {
-      const br = await fetch(`${BASE}/rtt/location?code=gb-nr:${from}&filterTo=gb-nr:${to}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } });
-      bd = br.ok ? await br.json() : {};
-    } catch (e) { return json({ debug: true, error: "board fetch failed" }); }
 
-    const services = bd.services || [];
-    const boardSample = services.slice(0, 10).map((s) => ({
-      uid: s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity,
-      dest: s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description,
-    }));
-    const fromName = NAMES[from] || from;
-    // prefer a train that terminates somewhere other than where it started (not a loop)
-    const pick = boardSample.find((x) => x.uid && x.dest && x.dest !== fromName) || boardSample[0];
-    if (!pick || !pick.uid) return json({ debug: true, from, to, boardSample, error: "no service to test" });
+    // Diagnostic: /api/service?debug=journey&from=NEM&to=WAT
+    // Shows, per board train, whether the far-end time was matched and what
+    // journeyMins comes out — so we can see why the >40min filter isn't biting.
+    if (debug === "journey") {
+      const grab = async (u) => { try { const r = await fetch(u, { headers: { Authorization: `Bearer ${accessToken}` } }); return r.ok ? await r.json() : { __status: r.status }; } catch (e) { return { __err: String(e) }; } };
+      const pd = await grab(`${BASE}/rtt/location?code=gb-nr:${from}&filterTo=gb-nr:${to}`);
+      const td = await grab(`${BASE}/rtt/location?code=gb-nr:${to}&filterFrom=gb-nr:${from}`);
+      const tmap = {};
+      for (const s of (td.services || [])) {
+        const uid = s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity;
+        const t = s.temporalData || {}; const arr = t.arrival || {}; const dep = t.departure || {};
+        const iso = arr.realtimeForecast || arr.scheduleAdvertised || arr.realtimeActual || dep.realtimeForecast || dep.scheduleAdvertised || dep.realtimeActual;
+        if (uid && iso) tmap[uid] = iso;
+      }
+      const rows = (pd.services || []).slice(0, 12).map((s) => {
+        const uid = s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity;
+        const dep = (s.temporalData || {}).departure || {};
+        const bookedIso = dep.scheduleAdvertised || dep.realtimeForecast || dep.realtimeActual;
+        const targetIso = tmap[uid];
+        let jm = null;
+        if (targetIso && bookedIso) { const d = Math.round((Date.parse(targetIso) - Date.parse(bookedIso)) / 60000); if (!Number.isNaN(d) && d > 0) jm = d; }
+        return { uid, dest: s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description, matched: !!targetIso, journeyMins: jm };
+      });
+      return json({ debug: "journey", from, to,
+        primaryCount: (pd.services || []).length, primaryStatus: pd.__status || 200,
+        targetCount: (td.services || []).length, targetStatus: td.__status || 200,
+        targetMapSize: Object.keys(tmap).length, rows });
+    }
+
+    const forcedUid = url.searchParams.get("uid"); // optional: test this train directly
+    const NAMES = { WAT:"London Waterloo", NEM:"New Malden", VXH:"Vauxhall", CLJ:"Clapham Junction", EAD:"Earlsfield", WIM:"Wimbledon" };
+
+    let boardSample = [];
+    let boardStatus = null;
+    let pick = null;
+
+    if (forcedUid) {
+      pick = { uid: forcedUid, dest: "(forced)" };
+    } else {
+      try {
+        const br = await fetch(`${BASE}/rtt/location?code=gb-nr:${from}&filterTo=gb-nr:${to}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } });
+        boardStatus = br.status;
+        const bd = br.ok ? await br.json() : {};
+        const services = bd.services || [];
+        boardSample = services.slice(0, 10).map((s) => ({
+          uid: s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity,
+          dest: s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description,
+        }));
+        const fromName = NAMES[from] || from;
+        pick = boardSample.find((x) => x.uid && x.dest && x.dest !== fromName) || boardSample[0] || null;
+      } catch (e) { return json({ debug: true, error: "board fetch failed" }); }
+    }
+
+    if (!pick || !pick.uid) {
+      return json({ debug: true, from, to, boardStatus, boardSample,
+        note: boardStatus === 200 ? "board returned no services (likely no trains at this hour) — try again during service hours, or pass &uid=<uniqueIdentity>"
+            : `board HTTP ${boardStatus} (429 = rate limited, try in a minute)` });
+    }
 
     const variants = {};
     const enc = encodeURIComponent;
@@ -81,7 +124,7 @@ export async function onRequestGet({ request, env }) {
         };
       } catch (e) { variants[label] = { error: String(e) }; }
     }
-    return json({ debug: true, from, to, tested: pick, boardSample, variants });
+    return json({ debug: true, from, to, boardStatus, tested: pick, boardSample, variants });
   }
 
   const svc = await fetchService(accessToken, id);
@@ -90,14 +133,82 @@ export async function onRequestGet({ request, env }) {
 
   const result = buildProgress(svc);
 
-  // Follow the turnaround: which inbound train forms this one at its origin?
+  // Which inbound train forms this one at its origin terminus?
+  // The gb-nr feed doesn't publish FORM associations, so if none is present
+  // we INFER it: a train that terminated on the same platform shortly before.
   const inboundId = findFormedFrom(svc);
   if (inboundId) {
     const inbound = await fetchService(accessToken, inboundId);
     if (inbound && !inbound.__error) result.inbound = buildInbound(inbound);
+  } else {
+    const inferred = await inferInbound(accessToken, svc);
+    if (inferred) result.inbound = inferred;
   }
 
   return json(result, 200, { "cache-control": "public, max-age=20, s-maxage=20" });
+}
+
+/* Infer the forming train: look at the origin terminus, find a service that
+   TERMINATED there on the SAME platform a few minutes before this train
+   departs. Turnarounds almost always reuse the platform, so it's a strong
+   guess — flagged inferred:true so the UI can say "likely". */
+async function inferInbound(accessToken, svc) {
+  const locs = svc.locations || [];
+  const origin = locs[0];
+  if (!origin) return null;
+  const term = origin.location && origin.location.shortCodes && origin.location.shortCodes[0];
+  const odep = (origin.temporalData && origin.temporalData.departure) || {};
+  const depIso = odep.realtimeForecast || odep.scheduleAdvertised || odep.realtimeActual;
+  const opm = origin.locationMetadata && origin.locationMetadata.platform;
+  const oplat = opm ? (opm.actual || opm.planned) : null;
+  if (!term || !depIso || !oplat) return null;      // need a platform to infer
+  const depMs = Date.parse(depIso);
+
+  let bd;
+  try {
+    const r = await fetch(`${BASE}/rtt/location?code=gb-nr:${term}` +
+      `&timeFrom=${encodeURIComponent(shiftLocalIso(depIso, -30))}` +
+      `&timeTo=${encodeURIComponent(shiftLocalIso(depIso, 3))}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!r.ok) return null;
+    bd = await r.json();
+  } catch (e) { return null; }
+
+  let best = null, bestArrMs = -Infinity;
+  for (const s of (bd.services || [])) {
+    const t = s.temporalData || {};
+    const arr = t.arrival, dep = t.departure;
+    if (!arr) continue;                                        // must arrive here
+    if (dep && (dep.scheduleAdvertised || dep.realtimeForecast || dep.realtimeActual)) continue; // must terminate
+    const pm = s.locationMetadata && s.locationMetadata.platform;
+    const plat = pm ? (pm.actual || pm.planned) : null;
+    if (!plat || String(plat) !== String(oplat)) continue;    // same platform
+    const arrIso = arr.realtimeForecast || arr.scheduleAdvertised || arr.realtimeActual;
+    if (!arrIso) continue;
+    const gap = (depMs - Date.parse(arrIso)) / 60000;
+    if (gap < 2 || gap > 35) continue;                         // plausible turnaround
+    const arrMs = Date.parse(arrIso);
+    if (arrMs > bestArrMs) { bestArrMs = arrMs; best = s; }     // latest arrival before departure
+  }
+  if (!best) return null;
+  const uid = best.scheduleMetadata && best.scheduleMetadata.uniqueIdentity;
+  if (!uid) return null;
+  const inSvc = await fetchService(accessToken, uid);
+  if (!inSvc || inSvc.__error) return null;
+  const inbound = buildInbound(inSvc);
+  inbound.inferred = true;
+  return inbound;
+}
+
+/* Shift a wall-clock ISO ("…THH:MM…") by N minutes, returned as a local
+   (no-offset) datetime string — RTT reads it in the location's own timezone. */
+function shiftLocalIso(iso, deltaMin) {
+  const m = iso && iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return "";
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0));
+  d.setUTCMinutes(d.getUTCMinutes() + deltaMin);
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:00`;
 }
 
 /* Fetch one service in detailed mode (detailed surfaces the non-public
