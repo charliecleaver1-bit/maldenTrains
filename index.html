@@ -3,26 +3,34 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0B0E13" />
-<title>Malden Line — live departures</title>
+<meta name="theme-color" content="#0E5C54" />
+<title>My Travel — live departures</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/icon-180.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="My Travel" />
+<meta name="mobile-web-app-capable" content="yes" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#0B0E13;
-    --ink-2:#10151D;
-    --surface:#151B24;
-    --surface-2:#1A222D;
-    --line:#222B36;
-    --amber:#FFC24B;
-    --amber-dim:#C9962F;
-    --text:#E7ECF2;
-    --muted:#8190A0;
-    --muted-2:#5C6877;
-    --green:#56D6A0;
-    --red:#FF7A6B;
-    --shadow:0 20px 50px -24px rgba(0,0,0,.8);
+    --ink:#F4F6F8;        /* page background */
+    --ink-2:#FFFFFF;
+    --surface:#FFFFFF;
+    --surface-2:#EDF1F3;
+    --line:#E1E7EB;
+    --amber:#0E5C54;      /* brand teal (was amber) — primary accent */
+    --amber-dim:#0A4A43;
+    --delay:#B5730B;      /* readable amber, used only for "delayed" */
+    --text:#16242B;
+    --muted:#5E6E76;
+    --muted-2:#93A2AA;
+    --green:#127C56;      /* trustworthy "on time" green */
+    --red:#C0392B;
+    --bus:#C15F3C;        /* calm terracotta for the bus mode */
+    --shadow:0 14px 34px -20px rgba(16,40,50,.28);
     --display:'Space Grotesk',system-ui,sans-serif;
     --body:'Inter',system-ui,sans-serif;
     --mono:'JetBrains Mono',ui-monospace,monospace;
@@ -31,8 +39,8 @@
   html,body{height:100%}
   body{
     background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(255,194,75,.06), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(86,214,160,.05), transparent 55%),
+      radial-gradient(1200px 600px at 80% -10%, rgba(14,92,84,.05), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(18,124,86,.04), transparent 55%),
       var(--ink);
     color:var(--text);
     font-family:var(--body);
@@ -46,10 +54,10 @@
   .top{display:flex;align-items:center;gap:12px;margin-bottom:18px;}
   .tile{
     width:42px;height:42px;border-radius:11px;flex:none;
-    background:linear-gradient(160deg,var(--amber),#e0a52f);
-    color:#1a1205;font-family:var(--display);font-weight:700;font-size:15px;
+    background:linear-gradient(160deg,var(--amber),#0a4a43);
+    color:#ffffff;font-family:var(--display);font-weight:700;font-size:15px;
     display:grid;place-items:center;letter-spacing:.5px;
-    box-shadow:0 6px 18px -6px rgba(255,194,75,.5);
+    box-shadow:0 6px 18px -6px rgba(14,92,84,.5);
   }
   .brand h1{font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.2px;line-height:1.1;}
   .brand p{font-size:11.5px;color:var(--muted);letter-spacing:.3px;}
@@ -70,10 +78,10 @@
   .refresh-btn:hover{color:var(--text);border-color:var(--muted-2)}
   .refresh-btn:active{transform:scale(.9)}
   .refresh-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-  .refresh-btn.spin{color:var(--amber);border-color:rgba(255,194,75,.4)}
+  .refresh-btn.spin{color:var(--amber);border-color:rgba(14,92,84,.4)}
   .refresh-btn.spin .ic-refresh{animation:rot .8s linear infinite;transform-origin:center}
   .refresh-btn .ic-check{display:none}
-  .refresh-btn.ok{color:var(--green);border-color:rgba(86,214,160,.5);background:rgba(86,214,160,.10)}
+  .refresh-btn.ok{color:var(--green);border-color:rgba(18,124,86,.5);background:rgba(18,124,86,.10)}
   .refresh-btn.ok .ic-refresh{display:none}
   .refresh-btn.ok .ic-check{display:block;animation:pop .3s ease}
   @keyframes pop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
@@ -105,8 +113,8 @@
     border:1px solid;
   }
   .alert.show{display:flex}
-  .alert.warn{background:rgba(255,194,75,.08);border-color:rgba(255,194,75,.28);color:#f5cf86;}
-  .alert.bad{background:rgba(255,122,107,.08);border-color:rgba(255,122,107,.30);color:#ffa99c;}
+  .alert.warn{background:rgba(181,115,11,.09);border-color:rgba(181,115,11,.28);color:#8A5709;}
+  .alert.bad{background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.30);color:#B23A2E;}
   .alert .dot{width:8px;height:8px;border-radius:50%;flex:none;background:currentColor;animation:pulse 1.8s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 
@@ -116,12 +124,11 @@
     border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px;
     box-shadow:var(--shadow);position:relative;overflow:hidden;
   }
-  .hero::before{content:"";position:absolute;inset:0;background:
-    repeating-linear-gradient(90deg,rgba(255,255,255,.015) 0 2px,transparent 2px 5px);
-    pointer-events:none;opacity:.5;}
+  .hero::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;
+    background:linear-gradient(90deg,var(--amber),#1EA089);pointer-events:none;}
   .hero .eyebrow{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
   .live{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-weight:500}
-  .live.demo{color:var(--amber)}
+  .live.demo{color:var(--delay)}
   .live i{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pulse 1.6s infinite;font-style:normal}
   .hero .dest{font-family:var(--display);font-size:26px;font-weight:600;letter-spacing:-.4px;line-height:1.1;margin-bottom:2px;}
   .hero .via{font-size:12.5px;color:var(--muted);margin-bottom:16px;}
@@ -135,9 +142,9 @@
   .plat{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:12px;color:var(--muted);}
   .plat b{font-family:var(--mono);color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:2px 8px;font-weight:500;}
 
-  .ontime{color:var(--green)} .late{color:var(--amber)} .cancel{color:var(--red)}
+  .ontime{color:var(--green)} .late{color:var(--delay)} .cancel{color:var(--red)}
   .jt{color:var(--muted);font-weight:400;}
-  .fast-badge{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#0B0E13;background:linear-gradient(180deg,var(--amber),#e0a52f);border-radius:5px;padding:2px 6px;vertical-align:middle;}
+  .fast-badge{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#ffffff;background:linear-gradient(180deg,var(--amber),#0a4a43);border-radius:5px;padding:2px 6px;vertical-align:middle;}
 
   /* ---- Journey progress (collapsible) ---- */
   .progress-toggle{
@@ -160,8 +167,8 @@
   .htl::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
   .htl-track{position:relative;padding-top:8px;}
   .htl-line{position:absolute;top:32px;height:2px;background:var(--line);border-radius:2px;z-index:0;}
-  .htl-fill{position:absolute;top:32px;height:2px;background:linear-gradient(90deg,var(--amber-dim),var(--amber));border-radius:2px;z-index:1;box-shadow:0 0 8px rgba(255,194,75,.45);transition:width .9s linear;}
-  .htl-head{position:absolute;top:33px;width:13px;height:13px;border-radius:50%;background:var(--amber);transform:translate(-50%,-50%);box-shadow:0 0 0 4px rgba(255,194,75,.2),0 0 10px rgba(255,194,75,.65);z-index:3;animation:pulse 1.4s infinite;transition:left .9s linear;}
+  .htl-fill{position:absolute;top:32px;height:2px;background:linear-gradient(90deg,var(--amber-dim),var(--amber));border-radius:2px;z-index:1;box-shadow:0 0 8px rgba(14,92,84,.45);transition:width .9s linear;}
+  .htl-head{position:absolute;top:33px;width:13px;height:13px;border-radius:50%;background:var(--amber);transform:translate(-50%,-50%);box-shadow:0 0 0 4px rgba(14,92,84,.2),0 0 10px rgba(14,92,84,.65);z-index:3;animation:pulse 1.4s infinite;transition:left .9s linear;}
   .htl-cols{display:flex;position:relative;z-index:2;}
   .htl-col{flex:0 0 auto;width:70px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:7px;}
   .htl-time{font-family:var(--mono);font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;height:12px;line-height:12px;}
@@ -188,7 +195,7 @@
   .inb-dot.ok{background:var(--green)}
   .inb-dot.bad{background:var(--amber);animation:pulse 1.6s infinite}
   .inb-lbl{flex:1;line-height:1.3}
-  .inb-lbl b.late{color:var(--amber)} .inb-lbl b.ontime{color:var(--green)}
+  .inb-lbl b.late{color:var(--delay)} .inb-lbl b.ontime{color:var(--green)}
   .inbound-toggle .chev{flex:none;color:var(--muted-2);transition:transform .25s,color .2s}
   .inbound-toggle[aria-expanded="true"] .chev{transform:rotate(180deg);color:var(--amber)}
   .inbound-body{display:none;margin-top:10px}
@@ -251,12 +258,12 @@
   .mode-tab{appearance:none;border:0;background:transparent;cursor:pointer;font-family:var(--display);font-weight:600;font-size:14px;color:var(--muted);padding:11px 8px;border-radius:10px;transition:color .25s,background .25s;display:flex;align-items:center;justify-content:center;gap:8px;}
   .mode-tab[aria-selected="true"]{background:var(--surface-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line);}
   .md-ic{font-size:12px;line-height:1;}
-  .md-ic.rail{color:var(--amber);} .md-ic.bus{color:var(--bus,#E8564A);}
+  .md-ic.rail{color:var(--amber);} .md-ic.bus{color:var(--bus,#C15F3C);}
 
   /* ---- Bus finder ---- */
-  #bus-view{--bus:#E8564A;}
+  #bus-view{--bus:#C15F3C;}
   .bus-intro{font-size:13px;color:var(--muted);line-height:1.5;margin:2px 2px 16px;}
-  .loc-btn{width:100%;appearance:none;border:0;border-radius:13px;padding:15px;font-family:var(--display);font-weight:700;font-size:15px;background:linear-gradient(180deg,var(--amber),#e0a52f);color:#1a1205;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;}
+  .loc-btn{width:100%;appearance:none;border:0;border-radius:13px;padding:15px;font-family:var(--display);font-weight:700;font-size:15px;background:linear-gradient(180deg,var(--amber),#0a4a43);color:#ffffff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;}
   .loc-btn svg{width:19px;height:19px;}
   .loc-btn:disabled{opacity:.6;}
   .divider{display:flex;align-items:center;gap:12px;color:var(--muted-2);font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin:16px 0;}
@@ -265,11 +272,11 @@
   .pc-field .plabel{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2);white-space:nowrap;}
   .pc-field input{flex:1;min-width:0;background:transparent;border:0;color:var(--text);font-family:var(--mono);font-size:15px;letter-spacing:1px;padding:11px 0;outline:none;text-transform:uppercase;}
   .pc-field input::placeholder{color:var(--muted-2);}
-  .act-primary{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-family:var(--display);font-weight:600;font-size:13px;background:linear-gradient(180deg,var(--amber),#e0a52f);color:#1a1205;cursor:pointer;white-space:nowrap;}
+  .act-primary{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-family:var(--display);font-weight:600;font-size:13px;background:linear-gradient(180deg,var(--amber),#0a4a43);color:#ffffff;cursor:pointer;white-space:nowrap;}
   .act-ghost{appearance:none;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);border-radius:10px;padding:8px 13px;font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;}
   .act-ghost:hover{color:var(--text);border-color:var(--muted-2);}
   .finder-msg{font-size:12.5px;color:var(--muted);margin:14px 2px 0;text-align:center;min-height:1px;}
-  .finder-msg.err{color:#ffa99c;}
+  .finder-msg.err{color:#B23A2E;}
   .results{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
   .stop{appearance:none;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 15px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;transition:border-color .18s,transform .1s;}
   .stop:hover{border-color:var(--muted-2);} .stop:active{transform:scale(.99);}
@@ -278,16 +285,22 @@
   .stop .smeta{grid-column:1/2;font-size:11px;color:var(--muted);}
   .stop .smeta b{color:var(--text);font-weight:500;}
   .stop .sroutes{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:120px;}
-  .route-chip{font-family:var(--mono);font-size:10.5px;font-weight:500;color:#1a1205;background:var(--bus,#E8564A);border-radius:5px;padding:2px 6px;}
+  .route-chip{font-family:var(--mono);font-size:10.5px;font-weight:500;color:#ffffff;background:var(--bus,#C15F3C);border-radius:5px;padding:2px 6px;}
 
   /* ---- Bus board ---- */
   .stop-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
+  .stop-switch{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;scrollbar-width:none;}
+  .stop-switch::-webkit-scrollbar{display:none;}
+  .stop-pill{flex:0 0 auto;appearance:none;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);
+    border-radius:20px;padding:8px 14px;font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .18s;}
+  .stop-pill[aria-selected="true"]{background:var(--surface-2);color:var(--text);border-color:var(--muted-2);}
+  .stop-pill.add{color:var(--amber);border-style:dashed;}
   .stop-head-main{flex:1;min-width:0;}
   .stop-head .lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2);margin-bottom:3px;}
   .stop-head .stop-name{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.3px;line-height:1.15;}
   .stop-head .stop-toward{font-size:12px;color:var(--muted);margin-top:2px;}
   .bus-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 15px;}
-  .bus-row .bline{font-family:var(--mono);font-size:15px;font-weight:700;color:#1a1205;background:var(--bus,#E8564A);border-radius:8px;padding:6px 10px;min-width:44px;text-align:center;}
+  .bus-row .bline{font-family:var(--mono);font-size:15px;font-weight:700;color:#ffffff;background:var(--bus,#C15F3C);border-radius:8px;padding:6px 10px;min-width:44px;text-align:center;}
   .bus-row .bdest{font-size:14.5px;font-weight:500;line-height:1.2;}
   .bus-row .bsub{font-size:11px;color:var(--muted-2);margin-top:2px;}
   .bus-row .bcount{text-align:right;font-family:var(--display);font-variant-numeric:tabular-nums;}
@@ -305,9 +318,14 @@
 <div class="wrap">
 
   <header class="top">
-    <div class="tile">NEM</div>
+    <div class="tile" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/>
+        <path d="M6 8.4v3.2a3 3 0 0 0 3 3h4.5a3 3 0 0 1 0 6"/><path d="M18 15.6V12"/>
+      </svg>
+    </div>
     <div class="brand">
-      <h1>Malden Line</h1>
+      <h1>My Travel</h1>
       <p>Live departures · New Malden</p>
     </div>
     <div class="clock">
@@ -362,7 +380,7 @@
     <div id="bus-setup">
       <div class="bus-intro">Set your home bus stop once — the board opens on it every time.</div>
       <button class="loc-btn" id="loc-btn" onclick="findByLocation()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg>
         Use my location
       </button>
       <div class="divider">or enter a postcode</div>
@@ -377,13 +395,14 @@
 
     <!-- Board (shown when a stop is saved) -->
     <div id="bus-board-wrap" hidden>
+      <div class="stop-switch" id="stop-switch"></div>
       <div class="stop-head">
         <div class="stop-head-main">
           <div class="lbl">Your bus stop</div>
           <div class="stop-name" id="bus-stop-name">—</div>
           <div class="stop-toward" id="bus-stop-toward"></div>
         </div>
-        <button class="act-ghost" onclick="changeStop()">Change</button>
+        <button class="act-ghost" onclick="removeStop()">Remove</button>
       </div>
       <div class="board" id="bus-board" aria-live="polite"></div>
     </div>
@@ -422,7 +441,8 @@ let state = {
   updated: null,
   loading: false,
   expandedId: null,     // id of the train whose journey panel is open
-  busStop: null,        // { id, name, letter, toward, routes }
+  busStops: [],         // [{ id, name, letter, toward, routes }]
+  busIdx: 0,            // index of the stop currently shown
   busData: null,        // last bus arrivals payload
   busSource: "demo",
 };
@@ -1028,7 +1048,7 @@ async function refresh(manual){
   if(manual) btn.classList.add("spin");
 
   if(state.mode === "bus"){
-    if(state.busStop){ await loadBusBoard(); }
+    if(curStop()){ await loadBusBoard(); }
   } else {
     if(state.services.length===0) showSkeleton();
     const res = await fetchBoard(state.dir);
@@ -1141,12 +1161,14 @@ function applyMode(){
   document.getElementById("mode-rail").setAttribute("aria-selected", (!bus).toString());
   document.getElementById("mode-bus").setAttribute("aria-selected", bus.toString());
   if(bus){
-    const hasStop = !!state.busStop;
+    const hasStop = state.busStops.length > 0;
     document.getElementById("bus-setup").hidden = hasStop;
     document.getElementById("bus-board-wrap").hidden = !hasStop;
-    if(hasStop) fillStopHead();
+    if(hasStop){ renderSwitcher(); fillStopHead(); }
   }
 }
+
+function curStop(){ return state.busStops[state.busIdx] || null; }
 
 /* ---- finder ---- */
 function findByLocation(){
@@ -1167,7 +1189,7 @@ function findByLocation(){
 function resetLocBtn(){
   const btn = document.getElementById("loc-btn");
   btn.disabled = false;
-  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg> Use my location`;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg> Use my location`;
 }
 function findByPostcode(){
   const pc = (document.getElementById("pc-input").value || "").trim();
@@ -1210,25 +1232,64 @@ let stopCache = {};
 function pickStop(i){
   const s = stopCache[i];
   if(!s) return;
-  state.busStop = s;
-  saveLocal("busstop", s);
+  // add (avoid duplicates), then select it
+  let idx = state.busStops.findIndex(x => x.id === s.id);
+  if(idx < 0){ state.busStops.push(s); idx = state.busStops.length - 1; }
+  state.busIdx = idx;
+  state.busData = null;
+  saveLocal("busstops", state.busStops);
   document.getElementById("bus-setup").hidden = true;
   document.getElementById("bus-board-wrap").hidden = false;
+  document.getElementById("bus-results").innerHTML = "";
+  document.getElementById("finder-msg").textContent = "";
+  renderSwitcher();
   fillStopHead();
   refresh(false);
 }
 
-function changeStop(){
-  state.busStop = null; state.busData = null;
-  saveLocal("busstop", null);
-  document.getElementById("bus-results").innerHTML = "";
-  document.getElementById("finder-msg").textContent = "";
+/* Switch between saved stops. */
+function setBusStop(i){
+  if(i === state.busIdx || !state.busStops[i]) return;
+  state.busIdx = i;
+  state.busData = null;
+  saveLocal("busidx", i);
+  renderSwitcher();
+  fillStopHead();
+  refresh(false);
+}
+
+/* Go back to the finder to add another stop (keeps existing ones). */
+function addStopFlow(){
   document.getElementById("bus-board-wrap").hidden = true;
   document.getElementById("bus-setup").hidden = false;
+  document.getElementById("bus-results").innerHTML = "";
+  document.getElementById("finder-msg").textContent = "";
+}
+
+function removeStop(){
+  if(!state.busStops.length) return;
+  state.busStops.splice(state.busIdx, 1);
+  state.busIdx = Math.max(0, Math.min(state.busIdx, state.busStops.length - 1));
+  state.busData = null;
+  saveLocal("busstops", state.busStops);
+  if(!state.busStops.length){ addStopFlow(); return; }
+  renderSwitcher();
+  fillStopHead();
+  refresh(false);
+}
+
+function renderSwitcher(){
+  const el = document.getElementById("stop-switch");
+  if(!el) return;
+  const pills = state.busStops.map((s,i)=>{
+    const short = s.name.replace(/ Station$/,"").replace(/^New Malden /,"");
+    return `<button class="stop-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(short)}${s.letter?` · ${esc(s.letter)}`:""}</button>`;
+  }).join("");
+  el.innerHTML = pills + `<button class="stop-pill add" onclick="addStopFlow()">＋ Add</button>`;
 }
 
 function fillStopHead(){
-  const s = state.busStop; if(!s) return;
+  const s = curStop(); if(!s) return;
   document.getElementById("bus-stop-name").textContent = s.name;
   const bits = [];
   if(s.toward) bits.push(`towards ${s.toward}`);
@@ -1239,12 +1300,13 @@ function fillStopHead(){
 
 /* ---- bus board ---- */
 async function loadBusBoard(){
-  if(!state.busStop) return;
+  const stop = curStop();
+  if(!stop) return;
   const board = document.getElementById("bus-board");
   if(!state.busData) board.innerHTML = `<div class="empty">Loading buses…</div>`;
   let arrivals = null, source = "demo";
   try{
-    const r = await fetch(`/api/busboard?stop=${encodeURIComponent(state.busStop.id)}`, { headers:{accept:"application/json"} });
+    const r = await fetch(`/api/busboard?stop=${encodeURIComponent(stop.id)}`, { headers:{accept:"application/json"} });
     if(r.ok){ const d = await r.json(); if(Array.isArray(d.arrivals)){ arrivals = d.arrivals; source = "live"; } }
   }catch(e){ /* fall to demo */ }
   if(!arrivals) arrivals = demoArrivals();
@@ -1321,7 +1383,13 @@ function buildStationOptions(){
 
 // restore saved mode + bus stop (from the live site; harmless in the sandbox)
 state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
-state.busStop = readLocal("busstop") || null;
+(function restoreStops(){
+  const arr = readLocal("busstops");
+  if(Array.isArray(arr) && arr.length){ state.busStops = arr; }
+  else { const old = readLocal("busstop"); if(old && old.id) state.busStops = [old]; }  // migrate
+  const idx = readLocal("busidx");
+  state.busIdx = (typeof idx === "number" && idx >= 0 && idx < state.busStops.length) ? idx : 0;
+})();
 
 buildStationOptions();
 applyMode();
