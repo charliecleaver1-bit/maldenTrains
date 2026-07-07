@@ -246,6 +246,55 @@
   /* ---- Footer ---- */
   .foot{margin-top:20px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted-2);}
 
+  /* ---- Mode toggle (Rail | Bus) ---- */
+  .mode-toggle{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:14px;}
+  .mode-tab{appearance:none;border:0;background:transparent;cursor:pointer;font-family:var(--display);font-weight:600;font-size:14px;color:var(--muted);padding:11px 8px;border-radius:10px;transition:color .25s,background .25s;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .mode-tab[aria-selected="true"]{background:var(--surface-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line);}
+  .md-ic{font-size:12px;line-height:1;}
+  .md-ic.rail{color:var(--amber);} .md-ic.bus{color:var(--bus,#E8564A);}
+
+  /* ---- Bus finder ---- */
+  #bus-view{--bus:#E8564A;}
+  .bus-intro{font-size:13px;color:var(--muted);line-height:1.5;margin:2px 2px 16px;}
+  .loc-btn{width:100%;appearance:none;border:0;border-radius:13px;padding:15px;font-family:var(--display);font-weight:700;font-size:15px;background:linear-gradient(180deg,var(--amber),#e0a52f);color:#1a1205;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;}
+  .loc-btn svg{width:19px;height:19px;}
+  .loc-btn:disabled{opacity:.6;}
+  .divider{display:flex;align-items:center;gap:12px;color:var(--muted-2);font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin:16px 0;}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line);}
+  .pc-field{display:flex;align-items:center;gap:10px;background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:4px 4px 4px 15px;}
+  .pc-field .plabel{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2);white-space:nowrap;}
+  .pc-field input{flex:1;min-width:0;background:transparent;border:0;color:var(--text);font-family:var(--mono);font-size:15px;letter-spacing:1px;padding:11px 0;outline:none;text-transform:uppercase;}
+  .pc-field input::placeholder{color:var(--muted-2);}
+  .act-primary{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-family:var(--display);font-weight:600;font-size:13px;background:linear-gradient(180deg,var(--amber),#e0a52f);color:#1a1205;cursor:pointer;white-space:nowrap;}
+  .act-ghost{appearance:none;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);border-radius:10px;padding:8px 13px;font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;}
+  .act-ghost:hover{color:var(--text);border-color:var(--muted-2);}
+  .finder-msg{font-size:12.5px;color:var(--muted);margin:14px 2px 0;text-align:center;min-height:1px;}
+  .finder-msg.err{color:#ffa99c;}
+  .results{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+  .stop{appearance:none;text-align:left;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 15px;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;transition:border-color .18s,transform .1s;}
+  .stop:hover{border-color:var(--muted-2);} .stop:active{transform:scale(.99);}
+  .stop .sname{font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.2px;}
+  .stop .sdist{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .stop .smeta{grid-column:1/2;font-size:11px;color:var(--muted);}
+  .stop .smeta b{color:var(--text);font-weight:500;}
+  .stop .sroutes{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:120px;}
+  .route-chip{font-family:var(--mono);font-size:10.5px;font-weight:500;color:#1a1205;background:var(--bus,#E8564A);border-radius:5px;padding:2px 6px;}
+
+  /* ---- Bus board ---- */
+  .stop-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
+  .stop-head-main{flex:1;min-width:0;}
+  .stop-head .lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2);margin-bottom:3px;}
+  .stop-head .stop-name{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.3px;line-height:1.15;}
+  .stop-head .stop-toward{font-size:12px;color:var(--muted);margin-top:2px;}
+  .bus-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--line);border-radius:13px;padding:13px 15px;}
+  .bus-row .bline{font-family:var(--mono);font-size:15px;font-weight:700;color:#1a1205;background:var(--bus,#E8564A);border-radius:8px;padding:6px 10px;min-width:44px;text-align:center;}
+  .bus-row .bdest{font-size:14.5px;font-weight:500;line-height:1.2;}
+  .bus-row .bsub{font-size:11px;color:var(--muted-2);margin-top:2px;}
+  .bus-row .bcount{text-align:right;font-family:var(--display);font-variant-numeric:tabular-nums;}
+  .bus-row .bcount .n{font-size:17px;font-weight:700;line-height:1;}
+  .bus-row .bcount .u{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+  .bus-row.due .bcount .n{color:var(--green);}
+
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
   @media (max-width:380px){
     .hero .sched{font-size:34px}.hero .dest{font-size:22px}.hero .count .n{font-size:28px}
@@ -276,6 +325,12 @@
     </button>
   </header>
 
+  <div class="mode-toggle" role="tablist" aria-label="Mode">
+    <button id="mode-rail" class="mode-tab" role="tab" aria-selected="true" onclick="setMode('rail')"><span class="md-ic rail">▬</span>Rail</button>
+    <button id="mode-bus" class="mode-tab" role="tab" aria-selected="false" onclick="setMode('bus')"><span class="md-ic bus">▬</span>Bus</button>
+  </div>
+
+  <div id="rail-view">
   <div class="toggle" role="tablist" aria-label="Direction">
     <button id="btn-out" role="tab" aria-pressed="true" onclick="setDir('out')"><span class="ic">↗</span>To London</button>
     <button id="btn-home" role="tab" aria-pressed="false" onclick="setDir('home')"><span class="ic">↘</span>Home</button>
@@ -300,6 +355,39 @@
     <span class="src" id="src">—</span>
   </div>
   <div class="board" id="board" aria-live="polite"></div>
+  </div><!-- /rail-view -->
+
+  <div id="bus-view" hidden>
+    <!-- Finder (shown when no stop saved) -->
+    <div id="bus-setup">
+      <div class="bus-intro">Set your home bus stop once — the board opens on it every time.</div>
+      <button class="loc-btn" id="loc-btn" onclick="findByLocation()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg>
+        Use my location
+      </button>
+      <div class="divider">or enter a postcode</div>
+      <div class="pc-field">
+        <span class="plabel">Postcode</span>
+        <input type="text" id="pc-input" spellcheck="false" placeholder="KT3 3HL" aria-label="Postcode" onkeydown="if(event.key==='Enter')findByPostcode()" />
+        <button class="act-primary" onclick="findByPostcode()">Search</button>
+      </div>
+      <div class="finder-msg" id="finder-msg"></div>
+      <div class="results" id="bus-results"></div>
+    </div>
+
+    <!-- Board (shown when a stop is saved) -->
+    <div id="bus-board-wrap" hidden>
+      <div class="stop-head">
+        <div class="stop-head-main">
+          <div class="lbl">Your bus stop</div>
+          <div class="stop-name" id="bus-stop-name">—</div>
+          <div class="stop-toward" id="bus-stop-toward"></div>
+        </div>
+        <button class="act-ghost" onclick="changeStop()">Change</button>
+      </div>
+      <div class="board" id="bus-board" aria-live="polite"></div>
+    </div>
+  </div><!-- /bus-view -->
 
   <footer class="foot">
     <span id="updated">—</span>
@@ -326,6 +414,7 @@ const LONDON_STATIONS = [
 ];
 
 let state = {
+  mode: "rail",         // "rail" | "bus"
   dir: defaultDir(),
   station: "WAT",       // London-end station, always resets to Waterloo
   source: "demo",       // "live" | "demo"
@@ -333,6 +422,9 @@ let state = {
   updated: null,
   loading: false,
   expandedId: null,     // id of the train whose journey panel is open
+  busStop: null,        // { id, name, letter, toward, routes }
+  busData: null,        // last bus arrivals payload
+  busSource: "demo",
 };
 
 /* The current journey, derived from direction + chosen station.
@@ -934,14 +1026,20 @@ async function refresh(manual){
   state.loading = true;
   const btn = document.getElementById("refresh");
   if(manual) btn.classList.add("spin");
-  if(state.services.length===0) showSkeleton();
-  const res = await fetchBoard(state.dir);
-  state.source = res.source;
-  state.services = res.services;
+
+  if(state.mode === "bus"){
+    if(state.busStop){ await loadBusBoard(); }
+  } else {
+    if(state.services.length===0) showSkeleton();
+    const res = await fetchBoard(state.dir);
+    state.source = res.source;
+    state.services = res.services;
+    render();
+  }
+
   state.updated = new Date();
   state.loading = false;
   btn.classList.remove("spin");
-  render();
   // brief green tick to confirm the refresh landed
   btn.classList.add("ok");
   clearTimeout(btn._okTimer);
@@ -995,14 +1093,16 @@ function tick(){
   document.getElementById("clock").textContent = hhmm(now);
   document.getElementById("date").textContent =
     now.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  const ago = document.getElementById("refresh-ago");
+  if(ago) ago.textContent = state.updated ? agoLabel(state.updated) : "";
+
+  if(state.mode === "bus"){ tickBus(); return; }
+
   // update hero countdown cheaply without full re-render
   const all = visibleServices(normalise(state.services));
   const next = all.find(s=>s.status!=="cancel")||all[0];
   const el = document.getElementById("hero-count");
   if(el && next && next.status!=="cancel") el.textContent = countLabel(next.etdMs||next.depMs);
-  // time since the last successful refresh (e.g. "2m")
-  const ago = document.getElementById("refresh-ago");
-  if(ago) ago.textContent = state.updated ? agoLabel(state.updated) : "";
   // nudge an open journey timeline along (local only)
   updateOpenProgress();
 }
@@ -1017,6 +1117,200 @@ function agoLabel(d){
   return Math.floor(m/60) + "h";
 }
 
+/* ============================================================
+   Bus mode — TfL stop finder + live arrivals board.
+   Rail features are untouched; this is a parallel view.
+   ============================================================ */
+
+/* ---- tiny persistence (works on the live site; no-ops in sandbox) ---- */
+function saveLocal(key, val){ try{ localStorage.setItem("ml_"+key, JSON.stringify(val)); }catch(e){} }
+function readLocal(key){ try{ const v=localStorage.getItem("ml_"+key); return v?JSON.parse(v):null; }catch(e){ return null; } }
+
+function setMode(m){
+  if(state.mode === m) return;
+  state.mode = m;
+  saveLocal("mode", m);
+  applyMode();
+  refresh(false);
+}
+
+function applyMode(){
+  const bus = state.mode === "bus";
+  document.getElementById("rail-view").hidden = bus;
+  document.getElementById("bus-view").hidden = !bus;
+  document.getElementById("mode-rail").setAttribute("aria-selected", (!bus).toString());
+  document.getElementById("mode-bus").setAttribute("aria-selected", bus.toString());
+  if(bus){
+    const hasStop = !!state.busStop;
+    document.getElementById("bus-setup").hidden = hasStop;
+    document.getElementById("bus-board-wrap").hidden = !hasStop;
+    if(hasStop) fillStopHead();
+  }
+}
+
+/* ---- finder ---- */
+function findByLocation(){
+  const btn = document.getElementById("loc-btn");
+  const msg = document.getElementById("finder-msg");
+  msg.className = "finder-msg"; msg.textContent = "";
+  if(!navigator.geolocation){ msg.textContent = "Location isn't available — enter a postcode instead."; return; }
+  btn.disabled = true; btn.textContent = "Finding you…";
+  navigator.geolocation.getCurrentPosition(
+    async (pos)=>{
+      await fetchStops({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      resetLocBtn();
+    },
+    ()=>{ msg.className="finder-msg err"; msg.textContent="Couldn't get your location — enter a postcode instead."; resetLocBtn(); },
+    { timeout: 8000, maximumAge: 60000 }
+  );
+}
+function resetLocBtn(){
+  const btn = document.getElementById("loc-btn");
+  btn.disabled = false;
+  btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg> Use my location`;
+}
+function findByPostcode(){
+  const pc = (document.getElementById("pc-input").value || "").trim();
+  const msg = document.getElementById("finder-msg");
+  if(!pc){ msg.className="finder-msg err"; msg.textContent="Enter a postcode first."; return; }
+  fetchStops({ postcode: pc });
+}
+
+async function fetchStops(params){
+  const msg = document.getElementById("finder-msg");
+  const box = document.getElementById("bus-results");
+  msg.className = "finder-msg"; msg.textContent = "Looking for stops nearby…"; box.innerHTML = "";
+  const qs = params.postcode ? `postcode=${encodeURIComponent(params.postcode)}` : `lat=${params.lat}&lon=${params.lon}`;
+  let stops = null;
+  try{
+    const r = await fetch(`/api/busstops?${qs}`, { headers:{accept:"application/json"} });
+    if(r.ok){ const d = await r.json(); if(Array.isArray(d.stops) && d.stops.length) stops = d.stops; }
+  }catch(e){ /* fall to demo */ }
+  if(!stops) stops = demoStops();          // preview / offline fallback
+  msg.textContent = "";
+  renderStops(stops);
+}
+
+function renderStops(stops){
+  const box = document.getElementById("bus-results");
+  box.innerHTML = stops.map((s,i)=>{
+    stopCache[i] = s;
+    const dist = s.distance!=null ? `${s.distance} m` : "";
+    const routes = (s.routes||[]).slice(0,5).map(r=>`<span class="route-chip">${esc(r)}</span>`).join("");
+    return `<button class="stop" onclick="pickStop(${i})">
+      <span class="sname">${esc(s.name)}</span>
+      <span class="sdist">${dist}</span>
+      <span class="smeta">${s.toward?`towards <b>${esc(s.toward)}</b>`:""}${s.letter?` · Stop ${esc(s.letter)}`:""}</span>
+      <span class="sroutes">${routes}</span>
+    </button>`;
+  }).join("");
+}
+let stopCache = {};
+
+function pickStop(i){
+  const s = stopCache[i];
+  if(!s) return;
+  state.busStop = s;
+  saveLocal("busstop", s);
+  document.getElementById("bus-setup").hidden = true;
+  document.getElementById("bus-board-wrap").hidden = false;
+  fillStopHead();
+  refresh(false);
+}
+
+function changeStop(){
+  state.busStop = null; state.busData = null;
+  saveLocal("busstop", null);
+  document.getElementById("bus-results").innerHTML = "";
+  document.getElementById("finder-msg").textContent = "";
+  document.getElementById("bus-board-wrap").hidden = true;
+  document.getElementById("bus-setup").hidden = false;
+}
+
+function fillStopHead(){
+  const s = state.busStop; if(!s) return;
+  document.getElementById("bus-stop-name").textContent = s.name;
+  const bits = [];
+  if(s.toward) bits.push(`towards ${s.toward}`);
+  if(s.letter) bits.push(`Stop ${s.letter}`);
+  if(s.routes && s.routes.length) bits.push(`routes ${s.routes.slice(0,6).join(", ")}`);
+  document.getElementById("bus-stop-toward").textContent = bits.join(" · ");
+}
+
+/* ---- bus board ---- */
+async function loadBusBoard(){
+  if(!state.busStop) return;
+  const board = document.getElementById("bus-board");
+  if(!state.busData) board.innerHTML = `<div class="empty">Loading buses…</div>`;
+  let arrivals = null, source = "demo";
+  try{
+    const r = await fetch(`/api/busboard?stop=${encodeURIComponent(state.busStop.id)}`, { headers:{accept:"application/json"} });
+    if(r.ok){ const d = await r.json(); if(Array.isArray(d.arrivals)){ arrivals = d.arrivals; source = "live"; } }
+  }catch(e){ /* fall to demo */ }
+  if(!arrivals) arrivals = demoArrivals();
+  state.busSource = source;
+  state.busData = arrivals.map(a => ({ ...a, dueMs: Date.now() + (a.secs||0)*1000 }));
+  renderBusBoard();
+}
+
+function renderBusBoard(){
+  const board = document.getElementById("bus-board");
+  const list = (state.busData||[]).filter(a => a.dueMs > Date.now()-60000);
+  if(!list.length){ board.innerHTML = `<div class="empty">No buses due in the next hour.</div>`; return; }
+  board.innerHTML = list.map(a=>{
+    const mins = Math.max(0, Math.round((a.dueMs - Date.now())/60000));
+    const due = mins <= 0;
+    return `<div class="bus-row ${due?"due":""}">
+      <div class="bline">${esc(a.line)}</div>
+      <div class="bmid">
+        <div class="bdest">${esc(a.destination||"")}</div>
+        ${state.busSource==="demo"?`<div class="bsub">demo data</div>`:""}
+      </div>
+      <div class="bcount"><div class="n">${due?"due":mins}</div><div class="u">${due?"":"min"}</div></div>
+    </div>`;
+  }).join("");
+  const u = document.getElementById("updated");
+  u.textContent = state.updated ? `Updated ${hhmm(state.updated)} · ${state.busSource==="live"?"live · TfL":"demo data"}` : "—";
+}
+
+function tickBus(){
+  if(!state.busData) return;
+  const rows = document.querySelectorAll("#bus-board .bus-row");
+  const list = (state.busData||[]).filter(a => a.dueMs > Date.now()-60000);
+  // if a bus dropped off the front, re-render; else just update numbers
+  if(rows.length !== list.length){ renderBusBoard(); return; }
+  list.forEach((a,i)=>{
+    const row = rows[i]; if(!row) return;
+    const mins = Math.max(0, Math.round((a.dueMs - Date.now())/60000));
+    const due = mins <= 0;
+    row.classList.toggle("due", due);
+    const n = row.querySelector(".bcount .n"), u = row.querySelector(".bcount .u");
+    if(n) n.textContent = due ? "due" : mins;
+    if(u) u.textContent = due ? "" : "min";
+  });
+}
+
+/* ---- demo fallbacks (preview / offline) ---- */
+function demoStops(){
+  return [
+    { id:"490010234KH", name:"New Malden High Street", letter:"KH", toward:"Kingston", distance:90, routes:["213","K1"] },
+    { id:"490010234KG", name:"New Malden High Street", letter:"KG", toward:"Raynes Park & Wimbledon", distance:110, routes:["213","K1"] },
+    { id:"490001206A",  name:"New Malden Station", letter:"A", toward:"Worcester Park", distance:240, routes:["131"] },
+    { id:"490011283M",  name:"Burlington Road", letter:"M", toward:"Kingston", distance:320, routes:["X26"] },
+  ];
+}
+function demoArrivals(){
+  const base = 2 + Math.floor(Math.random()*3);
+  const mk = (line,dest,m)=>({ line, destination:dest, secs:m*60, mins:m });
+  return [
+    mk("213","Kingston", base),
+    mk("K1","Kingston (Cromwell Road Bus Station)", base+4),
+    mk("213","Kingston", base+9),
+    mk("131","Kingston", base+13),
+    mk("K1","Kingston (Cromwell Road Bus Station)", base+18),
+  ];
+}
+
 /* ---- boot ---- */
 function buildStationOptions(){
   const sel = document.getElementById("station");
@@ -1024,7 +1318,13 @@ function buildStationOptions(){
   sel.innerHTML = LONDON_STATIONS.map(s=>`<option value="${s.code}">${s.name}</option>`).join("");
   sel.value = state.station;
 }
+
+// restore saved mode + bus stop (from the live site; harmless in the sandbox)
+state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
+state.busStop = readLocal("busstop") || null;
+
 buildStationOptions();
+applyMode();
 tick();
 render();
 refresh(false);            // fetch once when the page opens
