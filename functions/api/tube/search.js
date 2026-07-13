@@ -45,12 +45,21 @@ export async function onRequestGet({ request, env }) {
     stages.plainKept = matches.length;
   }
 
-  const all = matches.map((m) => ({
-    id: m.id,
-    name: cleanName(m.name),
-    lines: (m.lines || []).map((l) => l.id),
-    modes: m.modes || [],
-    isHub: /^HUB/i.test(m.id || ""),
+  const all = await Promise.all(matches.map(async (m) => {
+    const isHub = /^HUB/i.test(m.id || "");
+    let id = m.id;
+    let lines = (m.lines || []).map((l) => l.id);
+
+    // A hub (HUBBRX) has no line info and makes the planner ask "which one?".
+    // Swap it for the tube station inside it, and pick up its lines while we're
+    // there — otherwise Brixton shows with no colour dots and won't plan.
+    if (isHub) {
+      const res = await resolveHub(env, m.id);
+      if (res.id) id = res.id;
+      if (res.lines && res.lines.length) lines = res.lines;
+    }
+
+    return { id, name: cleanName(m.name), lines, modes: m.modes || [], isHub: /^HUB/i.test(id) };
   }));
 
   // Prefer a specific station id over a hub for the same name, but never drop
@@ -71,6 +80,41 @@ export async function onRequestGet({ request, env }) {
   return json({ stations }, 200, { "cache-control": "public, max-age=600, s-maxage=600" });
 }
 
+/* HUBxxx -> the Underground station inside it, plus its lines. */
+const hubCache = new Map();
+async function resolveHub(env, hubId) {
+  if (hubCache.has(hubId)) return hubCache.get(hubId);
+
+  let out = { id: null, lines: [] };
+  try {
+    const u = `https://api.tfl.gov.uk/StopPoint/${encodeURIComponent(hubId)}` +
+      (env.TFL_APP_KEY ? `?app_key=${encodeURIComponent(env.TFL_APP_KEY)}` : "");
+    const r = await fetch(u, { headers: { accept: "application/json" } });
+    if (r.ok) {
+      const d = await r.json();
+      const kids = [];
+      const walk = (n) => {
+        if (!n) return;
+        if (n.naptanId || n.id) kids.push(n);
+        (n.children || []).forEach(walk);
+      };
+      (d.children || []).forEach(walk);
+
+      const tube = kids.find((c) => /^940GZZLU/i.test(c.naptanId || c.id || ""))
+        || kids.find((c) => (c.modes || []).some((m) => TUBE_MODES.includes(m)));
+      if (tube) {
+        out = {
+          id: tube.naptanId || tube.id,
+          lines: (tube.lines || []).map((l) => l.id),
+        };
+      }
+    }
+  } catch (e) { /* keep the hub id — the planner also resolves hubs */ }
+
+  hubCache.set(hubId, out);
+  return out;
+}
+
 async function search(env, q, withModes) {
   const modes = withModes ? `?modes=${TUBE_MODES.join(",")}&` : "?";
   const u = `https://api.tfl.gov.uk/StopPoint/Search/${encodeURIComponent(q)}` +
@@ -79,9 +123,9 @@ async function search(env, q, withModes) {
     const r = await fetch(u, { headers: { accept: "application/json" } });
     if (!r.ok) return { url: u, status: r.status, matches: [] };
     const d = await r.json();
-    return { url: u, status: 200, matches: d.matches || [] };
+    return { url: redactKey(u), status: 200, matches: d.matches || [] };
   } catch (e) {
-    return { url: u, status: 0, matches: [], error: String(e) };
+    return { url: redactKey(u), status: 0, matches: [], error: String(e) };
   }
 }
 
@@ -92,6 +136,11 @@ function cleanName(n) {
     .replace(/ DLR Station$/i, "")
     .replace(/ Station$/i, "")
     .trim();
+}
+
+/* Never echo the API key back in debug output. */
+function redactKey(u) {
+  return String(u || "").replace(/([?&]app_key=)[^&]*/i, "$1REDACTED");
 }
 
 function json(body, status = 200, extra = {}) {

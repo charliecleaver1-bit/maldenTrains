@@ -64,6 +64,11 @@ function keyQS(env) {
   return env.TFL_APP_KEY ? `?app_key=${encodeURIComponent(env.TFL_APP_KEY)}` : "";
 }
 
+/* Never echo the API key back in debug output. */
+function redactKey(u) {
+  return String(u || "").replace(/([?&]app_key=)[^&]*/i, "$1REDACTED");
+}
+
 function json(body, status = 200, extra = {}) {
   return new Response(JSON.stringify(body), {
     status, headers: { "content-type": "application/json; charset=utf-8", ...extra },
