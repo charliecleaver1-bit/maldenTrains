@@ -30,7 +30,23 @@ export async function onRequestGet({ request, env }) {
 
   let d;
   try {
-    const r = await fetch(api, { headers: { accept: "application/json" } });
+    let r = await fetch(api, { headers: { accept: "application/json" } });
+
+    // TfL rate-limits hard without an API key (~50 req/min PER IP, and
+    // Cloudflare shares IPs). Back off once, then explain properly.
+    if (r.status === 429) {
+      await sleep(700);
+      r = await fetch(api, { headers: { accept: "application/json" } });
+    }
+    if (r.status === 429) {
+      return json({
+        error: "TfL is rate-limiting us (429).",
+        hint: env.TFL_APP_KEY
+          ? "A key is set, but the limit was still hit — try again in a moment."
+          : "No TFL_APP_KEY is set. Register a free key at api-portal.tfl.gov.uk and add it in Pages → Variables & Secrets (Production AND Preview).",
+        hasKey: !!env.TFL_APP_KEY,
+      }, 429);
+    }
     if (!r.ok) {
       const body = await r.text();
       return json({ error: `TfL planner error (${r.status}).`, detail: body.slice(0, 200) }, 502);
@@ -42,7 +58,9 @@ export async function onRequestGet({ request, env }) {
 
   if (debug === "1") return json({ debug: "plan", from, to, raw: d });
 
-  const journeys = (d.journeys || []).slice(0, 3);
+  // Each option costs direction lookups, so keep it lean — 2 is plenty
+  // (fastest, plus one alternative).
+  const journeys = (d.journeys || []).slice(0, 2);
   if (!journeys.length) return json({ options: [], note: "No tube route found between those stations." });
 
   const dbg = [];
@@ -111,11 +129,29 @@ async function resolveDirection(env, lineId, fromId, toId) {
   return { direction: null, label: null, why: "not found in either sequence" };
 }
 
-/* Cached per line+direction — these change rarely. */
+/* Route sequences barely change, but they're big and we need them on every
+   plan. Without persistent caching we hammer TfL and get rate-limited (429).
+   Two layers:
+     1. in-memory  — free within one Worker isolate
+     2. Cloudflare cache — survives isolates, so it actually holds
+*/
 const seqCache = new Map();
+
 async function routeSequence(env, lineId, direction) {
   const key = `${lineId}:${direction}`;
   if (seqCache.has(key)) return seqCache.get(key);
+
+  // Layer 2: the edge cache.
+  const cacheKey = new Request(`https://tube-seq.local/${lineId}/${direction}`);
+  const cache = caches.default;
+  try {
+    const hit = await cache.match(cacheKey);
+    if (hit) {
+      const out = await hit.json();
+      seqCache.set(key, out);
+      return out;
+    }
+  } catch (e) { /* cache miss is fine */ }
 
   const api = `https://api.tfl.gov.uk/Line/${encodeURIComponent(lineId)}/Route/Sequence/${direction}` +
     `?serviceTypes=Regular&excludeCrowding=true` + keyQS(env, true);
@@ -125,7 +161,6 @@ async function routeSequence(env, lineId, direction) {
     const r = await fetch(api, { headers: { accept: "application/json" } });
     if (r.ok) {
       const d = await r.json();
-      // Ordered routes give us clean station orderings along each branch.
       out = (d.orderedLineRoutes || [])
         .map((o) => (o.naptanIds || []).map(base))
         .filter((a) => a.length > 1);
@@ -134,6 +169,12 @@ async function routeSequence(env, lineId, direction) {
           .map((sp) => (sp.stopPoint || []).map((p) => base(p.id || p.stationId)))
           .filter((a) => a.length > 1);
       }
+      // Cache for a day — these are effectively static.
+      try {
+        await cache.put(cacheKey, new Response(JSON.stringify(out), {
+          headers: { "content-type": "application/json", "cache-control": "public, max-age=86400" },
+        }));
+      } catch (e) { /* non-fatal */ }
     }
   } catch (e) { /* leave empty — direction just stays unresolved */ }
 
@@ -153,6 +194,8 @@ function labelFor(lineId, direction) {
   if (NS.has(lineId)) return direction === "inbound" ? "Southbound" : "Northbound";
   return direction === "inbound" ? "Westbound" : "Eastbound";
 }
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 function cleanName(n) {
   return String(n || "").replace(/ Underground Station$/i, "").replace(/ Station$/i, "");

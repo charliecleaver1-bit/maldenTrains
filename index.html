@@ -2023,6 +2023,7 @@ async function loadTubeJourney(){
     const r = await fetch(`/api/tube/plan?from=${encodeURIComponent(j.from.id)}&to=${encodeURIComponent(j.to.id)}&_=${Date.now()}`,
       { headers:{accept:"application/json"}, cache:"no-store" });
     const d = await r.json();
+    if(r.status === 429) throw new Error((d.hint || d.error || "TfL is rate-limiting requests."));
     if(!r.ok || !d.options || !d.options.length) throw new Error(d.error || d.note || "no route");
     tubePlan = d.options[0];                     // fastest, re-planned around disruption
     // keep the pill's line dots honest
@@ -2235,6 +2236,10 @@ async function planTube(){
     const r = await fetch(`/api/tube/plan?from=${encodeURIComponent(tubePick.from.id)}&to=${encodeURIComponent(tubePick.to.id)}`,
       { headers:{accept:"application/json"} });
     const d = await r.json();
+    if(r.status === 429){
+      wrap.innerHTML = `<div class="st-none">${esc(d.hint || "TfL is rate-limiting requests — try again in a moment.")}</div>`;
+      tubeRoutes = []; tubeChosen = null; checkTube(); return;
+    }
     if(!r.ok || !d.options || !d.options.length){
       wrap.innerHTML = `<div class="st-none">${esc(d.note || d.error || "No tube route found.")}</div>`;
       tubeRoutes = []; tubeChosen = null; checkTube(); return;
