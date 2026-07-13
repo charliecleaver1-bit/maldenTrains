@@ -289,12 +289,13 @@
 
   /* ---- Bus board ---- */
   .stop-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
-  .stop-switch{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;scrollbar-width:none;}
-  .stop-switch::-webkit-scrollbar{display:none;}
-  .stop-pill{flex:0 0 auto;appearance:none;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);
-    border-radius:20px;padding:8px 14px;font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .18s;}
+  .stop-switch{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
+  .stop-pill{flex:0 1 auto;max-width:100%;appearance:none;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);
+    border-radius:20px;padding:8px 14px;font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .18s;}
   .stop-pill[aria-selected="true"]{background:var(--surface-2);color:var(--text);border-color:var(--muted-2);}
-  .stop-pill.add{color:var(--amber);border-style:dashed;}
+  .stop-pill.add{color:var(--amber);border-style:dashed;flex:0 0 auto;}
+  .stop-actions{display:flex;gap:8px;flex:none;}
   .stop-head-main{flex:1;min-width:0;}
   .stop-head .lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2);margin-bottom:3px;}
   .stop-head .stop-name{font-family:var(--display);font-size:18px;font-weight:600;letter-spacing:-.3px;line-height:1.15;}
@@ -402,7 +403,10 @@
           <div class="stop-name" id="bus-stop-name">—</div>
           <div class="stop-toward" id="bus-stop-toward"></div>
         </div>
-        <button class="act-ghost" onclick="removeStop()">Remove</button>
+        <div class="stop-actions">
+          <button class="act-ghost" onclick="renameStop()">Rename</button>
+          <button class="act-ghost" onclick="removeStop()">Remove</button>
+        </div>
       </div>
       <div class="board" id="bus-board" aria-live="polite"></div>
     </div>
@@ -1281,17 +1285,36 @@ function removeStop(){
 function renderSwitcher(){
   const el = document.getElementById("stop-switch");
   if(!el) return;
-  const pills = state.busStops.map((s,i)=>{
-    const short = s.name.replace(/ Station$/,"").replace(/^New Malden /,"");
-    return `<button class="stop-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(short)}${s.letter?` · ${esc(s.letter)}`:""}</button>`;
-  }).join("");
+  const pills = state.busStops.map((s,i)=>
+    `<button class="stop-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(pillLabel(s))}</button>`
+  ).join("");
   el.innerHTML = pills + `<button class="stop-pill add" onclick="addStopFlow()">＋ Add</button>`;
+}
+
+/* A user-given name wins; otherwise a tidied version of the TfL stop name. */
+function pillLabel(s){
+  if(s.label) return s.label;
+  const short = s.name.replace(/ Station$/,"").replace(/^New Malden /,"");
+  return short + (s.letter ? ` · ${s.letter}` : "");
+}
+
+function renameStop(){
+  const s = curStop(); if(!s) return;
+  const current = s.label || "";
+  const next = prompt(`Name this stop\n\n${s.name}${s.toward?` (towards ${s.toward})`:""}`, current || pillLabel(s));
+  if(next === null) return;                    // cancelled
+  const clean = next.trim().slice(0, 24);
+  s.label = clean || null;                     // empty clears back to the default name
+  saveLocal("busstops", state.busStops);
+  renderSwitcher();
+  fillStopHead();
 }
 
 function fillStopHead(){
   const s = curStop(); if(!s) return;
-  document.getElementById("bus-stop-name").textContent = s.name;
+  document.getElementById("bus-stop-name").textContent = s.label || s.name;
   const bits = [];
+  if(s.label) bits.push(s.name);               // show the real stop name underneath a nickname
   if(s.toward) bits.push(`towards ${s.toward}`);
   if(s.letter) bits.push(`Stop ${s.letter}`);
   if(s.routes && s.routes.length) bits.push(`routes ${s.routes.slice(0,6).join(", ")}`);

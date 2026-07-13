@@ -24,21 +24,19 @@ functions/api/board.js  Cloudflare Pages Function — proxies Realtime Trains,
    call `/api/board` on your own domain.
 
 ## Go live (free, ~3 min)
-1. Sign up at **https://api.rtt.io** (or the new **https://api-portal.rtt.io**) —
-   personal, non-commercial use is free.
-2. Get your API username + password.
-3. Cloudflare Pages → your project → **Settings → Variables & Secrets**, add:
-   - `RTT_USER` = your `rttapi_...` username
-   - `RTT_PASS` = your API password
+1. Sign up at **https://api-portal.rtt.io** — personal, non-commercial use is free.
+2. Copy your **token** (a long string).
+3. Cloudflare Pages → your project → **Settings → Variables & Secrets**, add ONE:
+   - `RTT_TOKEN` = your token
 4. Redeploy. The app flips from "demo data" to "live · RTT" automatically — no
    code change. If the feed is ever unreachable it quietly falls back to demo.
 
 ## Notes
 - The proxy is locked to NEM and WAT only, so the endpoint can't be abused to
   query arbitrary stations.
-- `api.rtt.io` (v1, basic auth) is scheduled to shut off **30 Sep 2026**. When
-  you move to the next-gen Bearer-token API, swap the two commented lines in
-  `functions/api/board.js` and add `RTT_TOKEN` instead.
+- This uses the next-gen RTT API (`data.rtt.io`, Bearer token). The token you
+  get is a long-life *refresh* token; the function swaps it for a short-life
+  access token automatically and caches it between requests.
 - Disruption text (full National Rail service messages) isn't in the RTT search
   feed — the banner here is derived from cancellations/delays in your own next
   few trains, which is what actually matters for the commute.
