@@ -82,6 +82,24 @@ export async function onRequestGet({ request, env }) {
         targetMapSize: Object.keys(tmap).length, rows });
     }
 
+    // Diagnostic: /api/service?debug=platform&from=NEM&to=WAT
+    // Dumps the raw platform object per train, so we can see whether the feed
+    // is publishing platforms at all for this station.
+    if (debug === "platform") {
+      const grab = async (u) => { try { const r = await fetch(u, { headers: { Authorization: `Bearer ${accessToken}` } }); return r.ok ? await r.json() : { __status: r.status }; } catch (e) { return { __err: String(e) }; } };
+      const pd = await grab(`${BASE}/rtt/location?code=gb-nr:${from}&filterTo=gb-nr:${to}`);
+      const rows = (pd.services || []).slice(0, 10).map((s) => {
+        const lm = s.locationMetadata || {};
+        return {
+          dest: s.destination && s.destination[0] && s.destination[0].location && s.destination[0].location.description,
+          locationMetadataKeys: Object.keys(lm),
+          platformRaw: lm.platform === undefined ? "(absent)" : lm.platform,
+          lineRaw: lm.line === undefined ? "(absent)" : lm.line,
+        };
+      });
+      return json({ debug: "platform", from, to, count: (pd.services || []).length, rows });
+    }
+
     const forcedUid = url.searchParams.get("uid"); // optional: test this train directly
     const NAMES = { WAT:"London Waterloo", NEM:"New Malden", VXH:"Vauxhall", CLJ:"Clapham Junction", EAD:"Earlsfield", WIM:"Wimbledon" };
 

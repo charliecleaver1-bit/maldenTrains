@@ -290,11 +290,17 @@
   /* ---- Bus board ---- */
   .stop-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;}
   .stop-switch{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
+  .pill-wrap{position:relative;display:inline-flex;align-items:center;max-width:100%;}
   .stop-pill{flex:0 1 auto;max-width:100%;appearance:none;border:1px solid var(--line);background:var(--ink-2);color:var(--muted);
-    border-radius:20px;padding:8px 14px;font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;
+    border-radius:20px;padding:8px 34px 8px 14px;font-family:var(--display);font-size:12.5px;font-weight:600;cursor:pointer;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .18s;}
   .stop-pill[aria-selected="true"]{background:var(--surface-2);color:var(--text);border-color:var(--muted-2);}
-  .stop-pill.add{color:var(--amber);border-style:dashed;flex:0 0 auto;}
+  .pencil{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:24px;height:24px;border:0;background:transparent;
+    color:var(--muted-2);display:grid;place-items:center;cursor:pointer;border-radius:50%;transition:color .18s,background .18s;padding:0;}
+  .pencil:hover{color:var(--amber);background:var(--surface-2);}
+  .pill-edit{flex:0 1 auto;border:1px solid var(--amber);background:var(--ink-2);color:var(--text);border-radius:20px;
+    padding:8px 14px;font-family:var(--display);font-size:12.5px;font-weight:600;outline:none;width:150px;max-width:100%;}
+  .stop-pill.add{color:var(--amber);border-style:dashed;flex:0 0 auto;padding:8px 14px;}
   .stop-actions{display:flex;gap:8px;flex:none;}
   .stop-head-main{flex:1;min-width:0;}
   .stop-head .lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2);margin-bottom:3px;}
@@ -1286,7 +1292,12 @@ function renderSwitcher(){
   const el = document.getElementById("stop-switch");
   if(!el) return;
   const pills = state.busStops.map((s,i)=>
-    `<button class="stop-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(pillLabel(s))}</button>`
+    `<span class="pill-wrap">
+       <button class="stop-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(pillLabel(s))}</button>
+       <button class="pencil" aria-label="Rename this stop" title="Rename" onclick="editPill(${i},event)">
+         <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+       </button>
+     </span>`
   ).join("");
   el.innerHTML = pills + `<button class="stop-pill add" onclick="addStopFlow()">＋ Add</button>`;
 }
@@ -1298,16 +1309,39 @@ function pillLabel(s){
   return short + (s.letter ? ` · ${s.letter}` : "");
 }
 
+/* Inline rename — swap the pill for a text field, commit on Enter/blur. */
+function editPill(i, ev){
+  if(ev) ev.stopPropagation();
+  const s = state.busStops[i]; if(!s) return;
+  const wrap = document.querySelectorAll("#stop-switch .pill-wrap")[i];
+  if(!wrap) return;
+  const input = document.createElement("input");
+  input.type = "text"; input.className = "pill-edit"; input.maxLength = 24;
+  input.value = s.label || pillLabel(s);
+  input.setAttribute("aria-label", "Stop name");
+  let done = false;
+  const commit = (save)=>{
+    if(done) return; done = true;
+    if(save){
+      const clean = input.value.trim().slice(0,24);
+      s.label = clean || null;                  // blank clears back to the default name
+      saveLocal("busstops", state.busStops);
+    }
+    renderSwitcher();
+    fillStopHead();
+  };
+  input.onkeydown = (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); commit(true); }
+    if(e.key === "Escape"){ e.preventDefault(); commit(false); }
+  };
+  input.onblur = ()=> commit(true);
+  wrap.replaceWith(input);
+  input.focus(); input.select();
+}
+
 function renameStop(){
-  const s = curStop(); if(!s) return;
-  const current = s.label || "";
-  const next = prompt(`Name this stop\n\n${s.name}${s.toward?` (towards ${s.toward})`:""}`, current || pillLabel(s));
-  if(next === null) return;                    // cancelled
-  const clean = next.trim().slice(0, 24);
-  s.label = clean || null;                     // empty clears back to the default name
-  saveLocal("busstops", state.busStops);
-  renderSwitcher();
-  fillStopHead();
+  const i = state.busIdx;
+  editPill(i);
 }
 
 function fillStopHead(){
