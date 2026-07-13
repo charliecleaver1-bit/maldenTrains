@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tube debug — My Travel</title>
+<style>
+  :root{--bg:#F4F6F8;--card:#fff;--line:#E1E7EB;--text:#16242B;--muted:#5E6E76;--teal:#0E5C54;--red:#C0392B;--green:#127C56;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;padding:20px;line-height:1.45;}
+  .wrap{max-width:900px;margin:0 auto;}
+  h1{font-size:20px;margin-bottom:4px;}
+  .sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
+  .card h2{font-size:15px;margin-bottom:4px;}
+  .card p{font-size:12.5px;color:var(--muted);margin-bottom:10px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+  input{flex:1;min-width:150px;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:14px;font-family:inherit;outline:none;}
+  input:focus{border-color:var(--teal);}
+  button{border:0;background:var(--teal);color:#fff;border-radius:9px;padding:9px 16px;font-weight:600;font-size:13.5px;cursor:pointer;font-family:inherit;}
+  button.alt{background:#EDF1F3;color:var(--text);border:1px solid var(--line);}
+  pre{background:#0E1B20;color:#C8E6DC;border-radius:10px;padding:12px;font-size:11.5px;overflow:auto;max-height:340px;
+    font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;}
+  .ok{color:var(--green);font-weight:600;} .bad{color:var(--red);font-weight:600;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:8px;}
+  code{background:#EDF1F3;border-radius:4px;padding:1px 5px;font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tube debug</h1>
+  <p class="sub">Hits each endpoint directly and shows exactly what TfL returned. Nothing here touches the app.</p>
+
+  <div class="card">
+    <h2>1 · Line status</h2>
+    <p>Every line, its status and severity. <code>?debug=1</code> shows the raw TfL payload.</p>
+    <div class="row">
+      <button onclick="go('/api/tube/status','s1')">Run</button>
+      <button class="alt" onclick="go('/api/tube/status?debug=1','s1')">Raw</button>
+    </div>
+    <pre id="s1">—</pre>
+  </div>
+
+  <div class="card">
+    <h2>2 · Station search</h2>
+    <p>Find a station's TfL id (you need these ids for the planner below).</p>
+    <div class="row">
+      <input id="q" placeholder="e.g. waterloo" value="waterloo" />
+      <button onclick="go('/api/tube/search?q='+encodeURIComponent(q.value),'s2')">Run</button>
+      <button class="alt" onclick="go('/api/tube/search?debug=1&q='+encodeURIComponent(q.value),'s2')">Raw</button>
+    </div>
+    <pre id="s2">—</pre>
+  </div>
+
+  <div class="card">
+    <h2>3 · Journey planner</h2>
+    <p>The important one. Returns the legs, and — crucially — the resolved <b>direction</b> per leg.
+       Use <b>Directions</b> to see exactly how each direction was worked out.</p>
+    <div class="row">
+      <input id="f" placeholder="from id" value="940GZZLUWLO" />
+      <input id="t" placeholder="to id" value="940GZZLUCYF" />
+    </div>
+    <div class="row">
+      <button onclick="go('/api/tube/plan?from='+f.value+'&to='+t.value,'s3')">Run</button>
+      <button class="alt" onclick="go('/api/tube/plan?debug=dir&from='+f.value+'&to='+t.value,'s3')">Directions</button>
+      <button class="alt" onclick="go('/api/tube/plan?debug=1&from='+f.value+'&to='+t.value,'s3')">Raw</button>
+    </div>
+    <pre id="s3">—</pre>
+    <div class="hint">Defaults are Waterloo → Canary Wharf. Grab other ids from the search above.</div>
+  </div>
+
+  <div class="card">
+    <h2>4 · Arrivals for a leg</h2>
+    <p>Direction-filtered live trains. <code>after</code> = minutes until you'd actually reach that platform
+       (0 for the first leg). <b>Raw</b> shows everything TfL sent, including the wrong-way trains that were dropped.</p>
+    <div class="row">
+      <input id="line" placeholder="line id" value="jubilee" />
+      <input id="stop" placeholder="stop id" value="940GZZLUWLO" />
+      <input id="dir" placeholder="inbound/outbound" value="outbound" />
+      <input id="after" placeholder="after (min)" value="0" style="max-width:110px" />
+    </div>
+    <div class="row">
+      <button onclick="go(`/api/tube/board?line=${line.value}&stop=${stop.value}&direction=${dir.value}&after=${after.value}`,'s4')">Run</button>
+      <button class="alt" onclick="go(`/api/tube/board?debug=1&line=${line.value}&stop=${stop.value}&direction=${dir.value}&after=${after.value}`,'s4')">Raw</button>
+    </div>
+    <pre id="s4">—</pre>
+    <div class="hint">If <code>wrongWayDropped</code> is 0 and you expected trains both ways, the direction filter may not be working.</div>
+  </div>
+</div>
+
+<script>
+async function go(url, target){
+  const el = document.getElementById(target);
+  el.textContent = "Loading " + url + " …";
+  const t0 = performance.now();
+  try{
+    const r = await fetch(url, { headers:{accept:"application/json"}, cache:"no-store" });
+    const ms = Math.round(performance.now() - t0);
+    const txt = await r.text();
+    let out;
+    try { out = JSON.stringify(JSON.parse(txt), null, 2); }
+    catch(e){ out = txt; }
+    el.innerHTML = `<span class="${r.ok?'ok':'bad'}">HTTP ${r.status}</span>  ·  ${ms}ms  ·  ${url}\n\n` + escapeHtml(out);
+  }catch(e){
+    el.innerHTML = `<span class="bad">FAILED</span> ${escapeHtml(String(e))}`;
+  }
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+}
+</script>
+</body>
+</html>

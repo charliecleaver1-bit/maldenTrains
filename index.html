@@ -74,6 +74,7 @@
     font-family:var(--mono);font-size:9px;line-height:1;color:var(--muted-2);
     white-space:nowrap;pointer-events:none;letter-spacing:.3px;
   }
+  .plat-tbc, .pl-tbc{color:var(--muted-2);}
   .refresh-btn:hover{color:var(--text);border-color:var(--muted-2)}
   .refresh-btn.stale{color:var(--delay);border-color:rgba(181,115,11,.45);background:rgba(181,115,11,.07);}
   .refresh-btn.stale .refresh-ago{color:var(--delay);font-weight:600;}
@@ -267,6 +268,82 @@
   .sheet-delete:hover{background:rgba(192,57,43,.06);}
   .sheet-cancel{width:100%;background:transparent;border:0;color:var(--muted);font-size:13px;padding:14px 0 0;cursor:pointer;}
 
+  /* ---------- tube ---------- */
+  .mode-toggle.mode-3{grid-template-columns:repeat(3,1fr);}
+  .md-ic.tube{color:#C0392B;}
+
+  .tstatus-btn{width:100%;display:flex;align-items:center;gap:10px;background:var(--ink-2);border:1px solid var(--line);
+    border-radius:14px;padding:13px 15px;cursor:pointer;margin-bottom:12px;font-family:var(--body);color:var(--text);}
+  .tsum{flex:1;text-align:left;font-size:13.5px;font-weight:500;}
+  .tpips{display:flex;gap:3px;flex:none;}
+  .tpip{width:7px;height:7px;border-radius:50%;background:var(--muted-2);}
+  .tpip.ok{background:var(--green);} .tpip.warn{background:var(--delay);} .tpip.bad{background:var(--red);}
+  .tchev{color:var(--muted-2);transition:transform .25s;flex:none;}
+  .tstatus-btn[aria-expanded="true"] .tchev{transform:rotate(180deg);}
+  .tstatus-panel{overflow:hidden;max-height:0;transition:max-height .3s ease;}
+  .tstatus-panel.open{max-height:1200px;}
+  .tlines{background:var(--ink-2);border:1px solid var(--line);border-radius:14px;padding:4px;margin-bottom:14px;}
+  .tlrow{display:flex;align-items:flex-start;gap:11px;padding:11px 10px;}
+  .tlrow + .tlrow{border-top:1px solid var(--line);}
+  .tlbar{width:5px;height:20px;border-radius:3px;flex:none;margin-top:1px;}
+  .tlname{flex:1;font-size:14px;font-weight:500;min-width:0;}
+  .tlnote{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.4;}
+  .tlstat{font-size:12px;font-weight:600;flex:none;text-align:right;}
+  .tlstat.ok{color:var(--green);} .tlstat.warn{color:var(--delay);} .tlstat.bad{color:var(--red);}
+
+  .alert.bad{background:rgba(192,57,43,.08);border-color:rgba(192,57,43,.30);color:#96271C;}
+
+  .troute{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px;margin-bottom:14px;
+    box-shadow:var(--shadow);position:relative;overflow:hidden;}
+  .troute::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--amber),#1EA089);}
+  .thd{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.3px;margin-bottom:3px;}
+  .tsub{font-size:12.5px;color:var(--muted);margin-bottom:16px;}
+
+  .tleg{display:grid;grid-template-columns:auto 1fr;gap:12px;}
+  .tleg .trail{display:flex;flex-direction:column;align-items:center;}
+  .tnode{width:11px;height:11px;border-radius:50%;border:2.5px solid var(--muted-2);background:var(--surface);flex:none;margin-top:4px;}
+  .tstem{width:5px;flex:1;border-radius:3px;margin:3px 0;min-height:30px;}
+  .tbody{padding-bottom:14px;min-width:0;}
+  .tst{font-size:14.5px;font-weight:600;}
+  .tvia{display:flex;align-items:center;gap:7px;margin-top:5px;flex-wrap:wrap;}
+  .lchip{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:20px;padding:3px 10px 3px 6px;font-size:11.5px;font-weight:600;}
+  .lchip .sw{width:10px;height:10px;border-radius:50%;flex:none;}
+  .dirchip{font-size:11px;font-weight:600;color:var(--text);background:var(--surface-2);border:1px solid var(--line);
+    border-radius:20px;padding:2px 8px;}
+  .warnchip{display:inline-flex;font-size:11px;font-weight:600;border-radius:20px;padding:2px 8px;}
+  .warnchip.warn{color:#8A5709;background:rgba(181,115,11,.1);border:1px solid rgba(181,115,11,.3);}
+  .warnchip.bad{color:#96271C;background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.35);}
+  .tdet{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  .tchange{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);background:var(--surface-2);
+    border:1px dashed var(--line);border-radius:10px;padding:7px 11px;margin:2px 0 12px 23px;}
+  .tchange b{color:var(--text);font-weight:600;}
+  .tch-ic{color:var(--amber);font-weight:700;}
+
+  .tdeps{margin-top:9px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:9px 11px;}
+  .tdeps-hd{font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted-2);margin-bottom:6px;}
+  .tdep{display:flex;align-items:baseline;gap:9px;padding:3px 0;}
+  .tdep + .tdep{border-top:1px solid var(--line);margin-top:3px;padding-top:6px;}
+  .tdep-m{font-family:var(--display);font-size:15px;font-weight:700;min-width:54px;}
+  .tdep-m small{font-size:10px;color:var(--muted);font-weight:500;}
+  .tdep-t{flex:1;font-size:12px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tdep-a{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:none;}
+  .tdeps-none{font-size:12px;color:var(--muted);}
+  .tfiltered{font-size:11px;color:var(--muted-2);font-style:italic;padding-top:10px;border-top:1px dashed var(--line);margin-top:2px;}
+
+  .jrn-pill .ldots{display:inline-flex;gap:2px;margin-right:6px;}
+  .jrn-pill .ldot{width:6px;height:6px;border-radius:50%;}
+
+  .troutes .ropt{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:13px;
+    padding:13px 14px;cursor:pointer;margin-bottom:8px;}
+  .troutes .ropt[aria-selected="true"]{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber);}
+  .troutes .rl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;}
+  .troutes .rt{font-size:12px;color:var(--muted);}
+  .troutes .arw{color:var(--muted-2);font-size:11px;}
+  .t-spin{font-size:12.5px;color:var(--muted);padding:10px 2px;}
+  .srow-ls{display:flex;gap:3px;flex:none;}
+  .srow-ls i{width:8px;height:8px;border-radius:50%;display:block;}
+
   .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
   .station-lbl{font-size:12px;color:var(--muted);min-width:34px;}
   .station-wrap{position:relative;flex:1;}
@@ -415,9 +492,10 @@
     </button>
   </header>
 
-  <div class="mode-toggle" role="tablist" aria-label="Mode">
+  <div class="mode-toggle mode-3" role="tablist" aria-label="Mode">
     <button id="mode-rail" class="mode-tab" role="tab" aria-selected="true" onclick="setMode('rail')"><span class="md-ic rail">▬</span>Rail</button>
     <button id="mode-bus" class="mode-tab" role="tab" aria-selected="false" onclick="setMode('bus')"><span class="md-ic bus">▬</span>Bus</button>
+    <button id="mode-tube" class="mode-tab" role="tab" aria-selected="false" onclick="setMode('tube')"><span class="md-ic tube">▬</span>Tube</button>
   </div>
 
   <div id="rail-view">
@@ -487,6 +565,31 @@
     </div>
   </div><!-- /bus-view -->
 
+  <div id="tube-view" hidden>
+    <!-- line status -->
+    <button class="tstatus-btn" id="tstatus-btn" aria-expanded="false" onclick="toggleTubeStatus()">
+      <span class="tpips" id="tpips"></span>
+      <span class="tsum" id="tsum">Checking line status…</span>
+      <svg class="tchev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </button>
+    <div class="tstatus-panel" id="tstatus-panel">
+      <div class="tlines" id="tlines"></div>
+    </div>
+
+    <div class="lbl-cap">Your tube journeys</div>
+    <div class="jrn-switch" id="tube-switch"></div>
+
+    <div class="jrn-empty" id="tube-empty" hidden>
+      No tube journeys yet. Tap <b>&#xFF0B; Add journey</b> and we'll work out the lines for you.
+    </div>
+
+    <div class="alert" id="tube-alert" role="status">
+      <span class="dot"></span><span id="tube-alert-txt"></span>
+    </div>
+
+    <div id="tube-card"></div>
+  </div><!-- /tube-view -->
+
   <footer class="foot">
     <span id="updated">—</span>
   </footer>
@@ -514,6 +617,27 @@
   <button class="sheet-save" id="jsave" disabled onclick="saveJourney()">Save journey</button>
   <button class="sheet-delete" id="jdelete" hidden onclick="deleteJourney()">Delete this journey</button>
   <button class="sheet-cancel" onclick="closeJourneySheet()">Cancel</button>
+</div>
+
+<div class="scrim" id="tscrim" onclick="closeTubeSheet()"></div>
+<div class="sheet" id="tsheet" role="dialog" aria-label="Add a tube journey">
+  <div class="grab"></div>
+  <h2 id="tsheet-title">Add a tube journey</h2>
+  <p class="sheet-hint">Pick your stations — we'll work out which line(s) to take.</p>
+
+  <div class="fld"><label>From</label><div id="t-from-slot"></div></div>
+  <div class="fld"><label>To</label><div id="t-to-slot"></div></div>
+
+  <div id="t-routewrap"></div>
+
+  <div class="fld" id="t-namefld" hidden>
+    <label>Name this journey</label>
+    <input id="tjname" placeholder="e.g. Work" maxlength="20" oninput="checkTube()" autocomplete="off" />
+  </div>
+
+  <button class="sheet-save" id="tjsave" disabled onclick="saveTubeJourney()">Save journey</button>
+  <button class="sheet-delete" id="tjdelete" hidden onclick="deleteTubeJourney()">Delete this journey</button>
+  <button class="sheet-cancel" onclick="closeTubeSheet()">Cancel</button>
 </div>
 
 <script src="/stations.js"></script>
@@ -546,6 +670,9 @@ let state = {
   busIdx: 0,            // index of the stop currently shown
   busData: null,        // last bus arrivals payload
   busSource: "demo",
+  tubeJourneys: [],     // [{name, from:{id,name}, to:{id,name}, lines:[]}]
+  tubeIdx: 0,
+  tubeEditIdx: null,
 };
 
 /* The journey currently being shown. */
@@ -796,7 +923,7 @@ function render(){
             <div class="u">${next.status==="cancel"?"no service":"to go"}</div>
           </div>
         </div>
-        <div class="plat">Platform <b>${next.platform||"?"}</b> · ${esc(next.operator||"South Western Railway")}</div>
+        <div class="plat">${next.platform ? `Platform <b>${esc(next.platform)}</b> · ` : `<span class="plat-tbc">Platform TBC</span> · `}${esc(next.operator||"South Western Railway")}</div>
         ${showProg ? `
         <button class="progress-toggle" id="tog-${pkey}" aria-expanded="false" aria-label="Show stops and live position" onclick="toggleProgress('${pkey}')">
           <svg class="chev" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -827,7 +954,7 @@ function render(){
         </div>
         <div class="right">
           <div class="cd">${cd}</div>
-          <div class="pl">Plat <b>${s.platform||"?"}</b></div>
+          <div class="pl">${s.platform ? `Plat <b>${esc(s.platform)}</b>` : `<span class="pl-tbc">Plat —</span>`}</div>
         </div>
         ${canExpand?`<svg class="svc-chev chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`:""}
         </div>
@@ -1175,6 +1302,9 @@ async function refresh(manual){
 
   if(state.mode === "bus"){
     if(curStop()){ await loadBusBoard(); }
+  } else if(state.mode === "tube"){
+    await loadTubeStatus();
+    if(curTube()) await loadTubeJourney();
   } else {
     if(state.services.length===0) showSkeleton();
     const res = await fetchBoard();
@@ -1504,16 +1634,24 @@ function setMode(m){
 }
 
 function applyMode(){
-  const bus = state.mode === "bus";
-  document.getElementById("rail-view").hidden = bus;
-  document.getElementById("bus-view").hidden = !bus;
-  document.getElementById("mode-rail").setAttribute("aria-selected", (!bus).toString());
-  document.getElementById("mode-bus").setAttribute("aria-selected", bus.toString());
-  if(bus){
+  const m = state.mode;                       // "rail" | "bus" | "tube"
+  document.getElementById("rail-view").hidden = m !== "rail";
+  document.getElementById("bus-view").hidden  = m !== "bus";
+  document.getElementById("tube-view").hidden = m !== "tube";
+  document.getElementById("mode-rail").setAttribute("aria-selected", String(m==="rail"));
+  document.getElementById("mode-bus").setAttribute("aria-selected", String(m==="bus"));
+  document.getElementById("mode-tube").setAttribute("aria-selected", String(m==="tube"));
+
+  if(m === "bus"){
     const hasStop = state.busStops.length > 0;
     document.getElementById("bus-setup").hidden = hasStop;
     document.getElementById("bus-board-wrap").hidden = !hasStop;
     if(hasStop){ renderSwitcher(); fillStopHead(); }
+  }
+  if(m === "tube"){
+    renderTubePills();
+    loadTubeStatus();
+    if(curTube() && !tubePlan) loadTubeJourney(); else renderTubeCard();
   }
 }
 
@@ -1769,6 +1907,408 @@ function demoArrivals(){
   ];
 }
 
+
+/* ============================================================
+   TUBE
+   Line status, saved journeys (TfL plans the route), and live
+   direction-filtered arrivals for every leg.
+   ============================================================ */
+
+const TUBE_LINES = {
+  bakerloo:{n:"Bakerloo",c:"#B36305"}, central:{n:"Central",c:"#E32017"},
+  circle:{n:"Circle",c:"#FFD300"}, district:{n:"District",c:"#00782A"},
+  "hammersmith-city":{n:"Hammersmith & City",c:"#F3A9BB"}, jubilee:{n:"Jubilee",c:"#A0A5A9"},
+  metropolitan:{n:"Metropolitan",c:"#9B0056"}, northern:{n:"Northern",c:"#000000"},
+  piccadilly:{n:"Piccadilly",c:"#003688"}, victoria:{n:"Victoria",c:"#0098D4"},
+  "waterloo-city":{n:"Waterloo & City",c:"#95CDBA"}, "elizabeth":{n:"Elizabeth",c:"#6950A1"},
+  dlr:{n:"DLR",c:"#00A4A7"},
+};
+const lineColour = id => (TUBE_LINES[id] && TUBE_LINES[id].c) || "#5E6E76";
+const lineName   = id => (TUBE_LINES[id] && TUBE_LINES[id].n) || id;
+
+let tubeStatus = [];        // [{id,name,status,severity,reason}]
+let tubePlan = null;        // the live-planned route for the selected journey
+let tubePick = { from:null, to:null };
+let tubeRoutes = [];        // options returned by the planner
+let tubeChosen = null;
+
+/* ---- line status ---- */
+async function loadTubeStatus(){
+  try{
+    const r = await fetch(`/api/tube/status?_=${Date.now()}`, { headers:{accept:"application/json"}, cache:"no-store" });
+    const d = await r.json();
+    if(!r.ok || !Array.isArray(d.lines)) throw new Error(d.error || "status failed");
+    tubeStatus = d.lines;
+  }catch(e){
+    console.error("Tube status failed:", e);
+    tubeStatus = [];
+  }
+  renderTubeStatus();
+  renderTubeCard();          // status feeds the per-leg warning chips
+}
+
+function statusOf(lineId){
+  return tubeStatus.find(l => l.id === lineId) || null;
+}
+
+function renderTubeStatus(){
+  const pips = document.getElementById("tpips");
+  const sum  = document.getElementById("tsum");
+  const list = document.getElementById("tlines");
+  if(!pips) return;
+
+  if(!tubeStatus.length){
+    pips.innerHTML = "";
+    sum.textContent = "Line status unavailable";
+    list.innerHTML = `<div class="tlrow"><span class="tlname">Couldn't load line status.</span></div>`;
+    return;
+  }
+  pips.innerHTML = tubeStatus.map(l=>`<span class="tpip ${l.severity}"></span>`).join("");
+  const bad = tubeStatus.filter(l=>l.severity !== "ok");
+  sum.textContent = bad.length
+    ? `${bad.length} line${bad.length>1?"s":""} with issues`
+    : "Good service on all lines";
+
+  list.innerHTML = tubeStatus.map(l=>`
+    <div class="tlrow">
+      <span class="tlbar" style="background:${lineColour(l.id)}"></span>
+      <span class="tlname">${esc(l.name)}${l.reason?`<div class="tlnote">${esc(l.reason)}</div>`:""}</span>
+      <span class="tlstat ${l.severity}">${esc(l.status)}</span>
+    </div>`).join("");
+}
+
+function toggleTubeStatus(){
+  const b = document.getElementById("tstatus-btn");
+  const p = document.getElementById("tstatus-panel");
+  const open = b.getAttribute("aria-expanded") === "true";
+  b.setAttribute("aria-expanded", String(!open));
+  p.classList.toggle("open", !open);
+}
+
+/* ---- saved journeys ---- */
+function curTube(){ return state.tubeJourneys[state.tubeIdx] || null; }
+
+function renderTubePills(){
+  const el = document.getElementById("tube-switch");
+  if(!el) return;
+  const pills = state.tubeJourneys.map((j,i)=>{
+    const dots = (j.lines||[]).map(l=>`<span class="ldot" style="background:${lineColour(l)}"></span>`).join("");
+    return `<span class="jrn-wrap">
+      <button class="jrn-pill" role="tab" aria-selected="${i===state.tubeIdx}" onclick="setTubeJourney(${i})">
+        ${dots?`<span class="ldots">${dots}</span>`:""}${esc(j.name)}</button>
+      <button class="jrn-pencil" aria-label="Edit journey" title="Edit" onclick="openTubeSheet(${i},event)">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button></span>`;
+  }).join("");
+  el.innerHTML = pills + `<button class="jrn-pill add" onclick="openTubeSheet()">\uFF0B Add journey</button>`;
+  document.getElementById("tube-empty").hidden = state.tubeJourneys.length > 0;
+}
+
+function setTubeJourney(i){
+  if(!state.tubeJourneys[i]) return;
+  state.tubeIdx = i;
+  tubePlan = null;
+  saveLocal("tubeidx", i);
+  renderTubePills();
+  document.getElementById("tube-card").innerHTML = `<div class="troute"><div class="t-spin">Planning your route…</div></div>`;
+  loadTubeJourney();
+}
+
+/* Re-plan the route LIVE every time, so a suspended line reroutes you
+   instead of confidently sending you into it. */
+async function loadTubeJourney(){
+  const j = curTube();
+  if(!j){ renderTubeCard(); return; }
+  try{
+    const r = await fetch(`/api/tube/plan?from=${encodeURIComponent(j.from.id)}&to=${encodeURIComponent(j.to.id)}&_=${Date.now()}`,
+      { headers:{accept:"application/json"}, cache:"no-store" });
+    const d = await r.json();
+    if(!r.ok || !d.options || !d.options.length) throw new Error(d.error || d.note || "no route");
+    tubePlan = d.options[0];                     // fastest, re-planned around disruption
+    // keep the pill's line dots honest
+    j.lines = [...new Set(tubePlan.legs.map(l=>l.line))];
+    saveLocal("tubejourneys", state.tubeJourneys);
+    renderTubePills();
+  }catch(e){
+    console.error("Tube plan failed:", e);
+    tubePlan = { error: String(e.message || e) };
+  }
+  renderTubeCard();
+  if(tubePlan && tubePlan.legs) loadTubeArrivals();
+}
+
+/* Live arrivals for each leg's station — direction-filtered, next 2 trains. */
+async function loadTubeArrivals(){
+  const legs = tubePlan.legs;
+
+
+  await Promise.all(legs.map(async (l,i)=>{
+    try{
+      // Next 2 live trains at this leg's station, right now — no projection.
+      const q = `/api/tube/board?line=${encodeURIComponent(l.line)}&stop=${encodeURIComponent(l.fromId)}` +
+                `&direction=${encodeURIComponent(l.direction||"")}&after=0&_=${Date.now()}`;
+      const r = await fetch(q, { headers:{accept:"application/json"}, cache:"no-store" });
+      const d = await r.json();
+      l._arrivals = (r.ok && Array.isArray(d.arrivals)) ? d.arrivals : [];
+      l._beyond = !!(d && d.beyondWindow);
+      l._unconfirmed = !l.direction;
+    }catch(e){
+      console.error("Tube arrivals failed for", l.line, e);
+      l._arrivals = [];
+    }
+  }));
+
+  renderTubeCard();
+}
+const CHANGE_MINS = 4;   // realistic platform-to-platform crossover
+
+/* Live minutes until the train reaches this platform. */
+function depLabel(mins){
+  if(mins <= 0) return `due`;
+  return `${mins}<small> min</small>`;
+}   // realistic platform-to-platform crossover
+
+function renderTubeCard(){
+  const card = document.getElementById("tube-card");
+  const alertEl = document.getElementById("tube-alert");
+  if(!card) return;
+
+  const j = curTube();
+  if(!j){ card.innerHTML = ""; alertEl.className = "alert"; return; }
+  if(!tubePlan){ card.innerHTML = `<div class="troute"><div class="t-spin">Planning your route…</div></div>`; return; }
+  if(tubePlan.error){
+    card.innerHTML = `<div class="troute"><div class="t-spin">Couldn't plan this journey — ${esc(tubePlan.error)}</div></div>`;
+    return;
+  }
+
+  const legs = tubePlan.legs;
+
+  /* disruption on a line you actually use */
+  const used = [...new Set(legs.map(l=>l.line))];
+  const hits = used.map(statusOf).filter(s=>s && s.severity!=="ok");
+  alertEl.className = "alert";
+  if(hits.length){
+    const worst = hits.find(h=>h.severity==="bad") || hits[0];
+    alertEl.classList.add("show", worst.severity==="bad" ? "bad" : "warn");
+    document.getElementById("tube-alert-txt").innerHTML =
+      `<b>${esc(worst.name)} line:</b> ${esc(worst.status)}${worst.reason?` — ${esc(worst.reason)}`:""}`;
+  }
+
+  const now = Date.now();
+  const clockAt = m => hhmm(new Date(now + m*60000));
+
+  let total = 0;
+  legs.forEach((l,i)=>{ total += (i===0?0:CHANGE_MINS) + (l.mins||0); });
+
+  const legsHtml = legs.map((l,i)=>{
+    const first = i===0;
+    const st = statusOf(l.line);
+    const arrivals = l._arrivals || [];
+
+    let depsHtml;
+    if(!arrivals.length){
+      depsHtml = `<div class="tdeps-none">No live times right now.</div>`;
+    } else {
+      depsHtml = arrivals.slice(0,2).map(a=>`
+        <div class="tdep">
+          <span class="tdep-m">${depLabel(a.mins)}</span>
+          <span class="tdep-t">towards ${esc(a.towards||l.towards||"—")}${a.platform?` · ${esc(a.platform)}`:""}</span>
+          <span class="tdep-a">${clockAt(a.mins)}</span>
+        </div>`).join("");
+    }
+
+    return `${!first?`<div class="tchange"><span class="tch-ic">\u21C4</span> Change at <b>${esc(l.from)}</b> · about ${CHANGE_MINS} min to cross over</div>`:""}
+      <div class="tleg">
+        <div class="trail">
+          <span class="tnode" style="border-color:${lineColour(l.line)}"></span>
+          <span class="tstem" style="background:${lineColour(l.line)}"></span>
+        </div>
+        <div class="tbody">
+          <div class="tst">${esc(l.from)}</div>
+          <div class="tvia">
+            <span class="lchip"><span class="sw" style="background:${lineColour(l.line)}"></span>${esc(lineName(l.line))}</span>
+            ${l.dirLabel?`<span class="dirchip">${esc(l.dirLabel)}</span>`:""}
+            ${st && st.severity!=="ok" ? `<span class="warnchip ${st.severity}">${esc(st.status)}</span>` : ""}
+          </div>
+          <div class="tdet">${l.mins} min ride${l._unconfirmed?" · direction unconfirmed":""}</div>
+          <div class="tdeps">
+            <div class="tdeps-hd">Next trains · live</div>
+            ${depsHtml}
+          </div>
+        </div>
+      </div>`;
+  }).join("") + `
+      <div class="tleg">
+        <div class="trail"><span class="tnode" style="border-color:var(--amber);background:var(--amber)"></span></div>
+        <div class="tbody"><div class="tst">${esc(j.to.name)}</div>
+        <div class="tdet">Arrive ~${clockAt(total)} · ${total} min total</div></div>
+      </div>`;
+
+  const lineList = used.map(lineName).join(" → ");
+  card.innerHTML = `
+    <div class="troute">
+      <div class="eyebrow">Your route · <span class="live"><i></i>Live</span></div>
+      <div class="thd">${esc(j.from.name)} → ${esc(j.to.name)}</div>
+      <div class="tsub">${total} min · ${tubePlan.changes ? `${tubePlan.changes} change${tubePlan.changes>1?"s":""}` : "no changes"} · ${esc(lineList)}</div>
+      <div>${legsHtml}</div>
+      <div class="tfiltered">Only trains going your way are shown.</div>
+    </div>`;
+}
+
+/* ---- add / edit sheet ---- */
+async function openTubeSheet(i, ev){
+  if(ev) ev.stopPropagation();
+  const editing = (typeof i === "number" && state.tubeJourneys[i]);
+  state.tubeEditIdx = editing ? i : null;
+  const j = editing ? state.tubeJourneys[i] : null;
+
+  tubePick = { from: j ? j.from : null, to: j ? j.to : null };
+  tubeRoutes = []; tubeChosen = null;
+
+  document.getElementById("tsheet-title").textContent = editing ? "Edit tube journey" : "Add a tube journey";
+  document.getElementById("tjname").value = j ? j.name : "";
+  document.getElementById("tjdelete").hidden = !editing;
+  document.getElementById("t-routewrap").innerHTML = "";
+  document.getElementById("t-namefld").hidden = !editing;
+
+  tubeSlot("from"); tubeSlot("to");
+  if(j) planTube();
+  checkTube();
+
+  document.getElementById("tscrim").classList.add("open");
+  document.getElementById("tsheet").classList.add("open");
+}
+function closeTubeSheet(){
+  document.getElementById("tscrim").classList.remove("open");
+  document.getElementById("tsheet").classList.remove("open");
+}
+
+function tubeSlot(which){
+  const el = document.getElementById(`t-${which}-slot`);
+  const p = tubePick[which];
+  if(p){
+    el.innerHTML = `<div class="picked">${esc(p.name)}<button onclick="clearTubePick('${which}')">change</button></div>`;
+  } else {
+    el.innerHTML = `<input placeholder="Search tube station…" autocomplete="off" oninput="searchTube('${which}',this.value)" />
+      <div class="st-results" id="t-${which}-res"></div>`;
+  }
+}
+function clearTubePick(which){
+  tubePick[which] = null; tubeRoutes = []; tubeChosen = null;
+  document.getElementById("t-routewrap").innerHTML = "";
+  document.getElementById("t-namefld").hidden = true;
+  tubeSlot(which); checkTube();
+}
+
+let tubeSearchT = null;
+function searchTube(which, q){
+  clearTimeout(tubeSearchT);
+  const res = document.getElementById(`t-${which}-res`);
+  if(!q || q.trim().length < 2){ res.innerHTML = ""; return; }
+  tubeSearchT = setTimeout(async ()=>{
+    res.innerHTML = `<div class="t-spin">Searching…</div>`;
+    try{
+      const r = await fetch(`/api/tube/search?q=${encodeURIComponent(q.trim())}`, { headers:{accept:"application/json"} });
+      const d = await r.json();
+      const hits = (d.stations||[]).slice(0,8);
+      res.innerHTML = hits.length ? hits.map(s=>`
+        <button class="st-row" onclick="chooseTube('${which}','${esc(s.id)}','${esc(s.name).replace(/'/g,"\\'")}')">
+          <span class="nm">${esc(s.name)}</span>
+          <span class="srow-ls">${(s.lines||[]).slice(0,6).map(l=>`<i style="background:${lineColour(l)}"></i>`).join("")}</span>
+        </button>`).join("") : `<div class="st-none">No stations match.</div>`;
+    }catch(e){ res.innerHTML = `<div class="st-none">Search failed.</div>`; }
+  }, 250);
+}
+
+function chooseTube(which, id, name){
+  tubePick[which] = { id, name };
+  tubeSlot(which);
+  if(tubePick.from && tubePick.to) planTube();
+  checkTube();
+}
+
+/* Ask TfL to work out the route options. */
+async function planTube(){
+  const wrap = document.getElementById("t-routewrap");
+  wrap.innerHTML = `<div class="t-spin">Working out your route…</div>`;
+  try{
+    const r = await fetch(`/api/tube/plan?from=${encodeURIComponent(tubePick.from.id)}&to=${encodeURIComponent(tubePick.to.id)}`,
+      { headers:{accept:"application/json"} });
+    const d = await r.json();
+    if(!r.ok || !d.options || !d.options.length){
+      wrap.innerHTML = `<div class="st-none">${esc(d.note || d.error || "No tube route found.")}</div>`;
+      tubeRoutes = []; tubeChosen = null; checkTube(); return;
+    }
+    tubeRoutes = d.options;
+    tubeChosen = 0;
+    wrap.innerHTML = `<div class="fld"><label>Route</label><div class="troutes" id="t-ropts"></div></div>`;
+    paintTubeRoutes();
+    document.getElementById("t-namefld").hidden = false;
+    checkTube();
+  }catch(e){
+    wrap.innerHTML = `<div class="st-none">Couldn't plan that journey.</div>`;
+    tubeRoutes = []; tubeChosen = null; checkTube();
+  }
+}
+
+function paintTubeRoutes(){
+  document.getElementById("t-ropts").innerHTML = tubeRoutes.map((r,i)=>{
+    const chips = r.legs.map(l=>`<span class="lchip"><span class="sw" style="background:${lineColour(l.line)}"></span>${esc(lineName(l.line))}</span>`)
+      .join('<span class="arw">→</span>');
+    return `<button class="ropt" aria-selected="${i===tubeChosen}" onclick="pickTubeRoute(${i})">
+      <div class="rl">${chips}</div>
+      <div class="rt">${r.mins} min · ${r.changes ? `${r.changes} change${r.changes>1?"s":""}` : "no changes"}</div>
+    </button>`;
+  }).join("");
+}
+function pickTubeRoute(i){ tubeChosen = i; paintTubeRoutes(); }
+
+function checkTube(){
+  const nm = document.getElementById("tjname");
+  const ok = tubePick.from && tubePick.to && tubeRoutes.length && tubeChosen !== null && nm && nm.value.trim();
+  document.getElementById("tjsave").disabled = !ok;
+}
+
+function saveTubeJourney(){
+  const nm = document.getElementById("tjname");
+  if(!tubePick.from || !tubePick.to || tubeChosen === null) return;
+  const r = tubeRoutes[tubeChosen];
+  const entry = {
+    name: nm.value.trim().slice(0,20),
+    from: tubePick.from,
+    to: tubePick.to,
+    lines: [...new Set(r.legs.map(l=>l.line))],   // for the pill dots
+  };
+  if(state.tubeEditIdx !== null && state.tubeJourneys[state.tubeEditIdx]){
+    state.tubeJourneys[state.tubeEditIdx] = entry;
+    state.tubeIdx = state.tubeEditIdx;
+  } else {
+    state.tubeJourneys.push(entry);
+    state.tubeIdx = state.tubeJourneys.length - 1;
+  }
+  state.tubeEditIdx = null;
+  tubePlan = null;
+  saveLocal("tubejourneys", state.tubeJourneys);
+  saveLocal("tubeidx", state.tubeIdx);
+  closeTubeSheet();
+  renderTubePills();
+  loadTubeJourney();
+}
+
+function deleteTubeJourney(){
+  const i = state.tubeEditIdx;
+  if(i === null || !state.tubeJourneys[i]) return;
+  state.tubeJourneys.splice(i, 1);
+  state.tubeIdx = Math.max(0, Math.min(state.tubeIdx, state.tubeJourneys.length - 1));
+  state.tubeEditIdx = null;
+  tubePlan = null;
+  saveLocal("tubejourneys", state.tubeJourneys);
+  saveLocal("tubeidx", state.tubeIdx);
+  closeTubeSheet();
+  renderTubePills();
+  if(state.tubeJourneys.length) loadTubeJourney(); else renderTubeCard();
+}
+
 /* ---- boot ---- */
 
 /* This domain previously hosted an older PWA whose service worker can still be
@@ -1790,6 +2330,12 @@ function demoArrivals(){
 
 // restore saved mode + bus stop (from the live site; harmless in the sandbox)
 state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
+(function restoreTube(){
+  const arr = readLocal("tubejourneys");
+  if(Array.isArray(arr)) state.tubeJourneys = arr.filter(j=>j && j.from && j.to && j.name);
+  const i = readLocal("tubeidx");
+  state.tubeIdx = (typeof i === "number" && i >= 0 && i < state.tubeJourneys.length) ? i : 0;
+})();
 (function restoreJourneys(){
   const arr = readLocal("journeys");
   if(Array.isArray(arr) && arr.length && arr.every(j=>j && j.from && j.to && j.name)){
