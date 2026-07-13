@@ -55,9 +55,18 @@ export async function onRequestGet({ request, env }) {
       }, 429);
     }
     if (res.status === 300) {
+      // Still ambiguous after a retry — hand back exactly what TfL said so we
+      // can see WHY, rather than guessing at the shape of its response.
+      const b = res.body || {};
       return json({
         error: "TfL couldn't pin down those stations.",
-        hint: "Pick the stations again from the search list — one of them is ambiguous.",
+        sentFrom: from,
+        sentTo: to,
+        // what keys did TfL actually give us?
+        responseKeys: Object.keys(b),
+        fromCandidates: describeDis(b.fromLocationDisambiguation),
+        toCandidates: describeDis(b.toLocationDisambiguation),
+        raw: b,
       }, 502);
     }
     if (!res.ok) {
@@ -229,6 +238,21 @@ async function callPlanner(env, from, to) {
   return { ok: r.ok, status: r.status, body };
 }
 
+/* Summarise a disambiguation block so the failure is readable at a glance. */
+function describeDis(dis) {
+  if (!dis) return "(none)";
+  return {
+    status: dis.matchStatus,
+    options: (dis.disambiguationOptions || []).slice(0, 6).map((o) => ({
+      name: o.place && o.place.commonName,
+      naptanId: o.place && o.place.naptanId,
+      icsCode: o.place && o.place.icsCode,
+      type: o.place && o.place.placeType,
+      quality: o.matchQuality,
+    })),
+  };
+}
+
 /* TfL ranks its disambiguation candidates — take the best one that's a real
    stop point, preferring an exact tube station id over a hub. */
 function pickDisambiguated(dis) {
@@ -238,10 +262,11 @@ function pickDisambiguated(dis) {
     .sort((a, b) => (b.matchQuality || 0) - (a.matchQuality || 0));
   if (!opts.length) return null;
 
+  const idOf = (o) => o.place.naptanId || o.place.icsCode || o.place.id || null;
+
   // A 940G… id is a specific station; prefer it over a HUB… parent.
-  const exact = opts.find((o) => /^940G/i.test(o.place.naptanId || o.place.icsCode || ""));
-  const best = exact || opts[0];
-  return best.place.naptanId || best.place.icsCode || null;
+  const exact = opts.find((o) => /^940G/i.test(idOf(o) || ""));
+  return idOf(exact || opts[0]);
 }
 
 function cleanName(n) {
