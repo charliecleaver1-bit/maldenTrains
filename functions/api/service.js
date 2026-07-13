@@ -10,27 +10,42 @@
  *    platform, shortly before it departs. Flagged inferred:true.
  */
 
-const BASE = "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120";
+const BASE = "https://api1.raildata.org.uk/1010-service-details1_2/LDBWS/api/20220120";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   if (!id) return json({ error: "Missing service id." }, 400);
-  if (!env.LDB_KEY) return json({ error: "Live feed not configured." }, 503);
 
-  const svc = await getService(env.LDB_KEY, id);
-  if (!svc) return json({ error: "Service not found." }, 404);
+  // Service Details is a separate RDM product. If it issued its own key, set
+  // LDB_SVC_KEY; otherwise the departures key is used.
+  const key = env.LDB_SVC_KEY || env.LDB_KEY;
+  if (!key) return json({ error: "Live feed not configured." }, 503);
 
-  return json(buildProgress(svc), 200, { "cache-control": "public, max-age=20, s-maxage=20" });
-}
-
-async function getService(key, id) {
+  let r, body;
   try {
-    const r = await fetch(`${BASE}/GetServiceDetails/${encodeURIComponent(id)}`,
+    r = await fetch(`${BASE}/GetServiceDetails/${encodeURIComponent(id)}`,
       { headers: { "x-apikey": key, accept: "application/json" } });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch (e) { return null; }
+    body = await r.text();
+  } catch (e) {
+    return json({ error: "Could not reach the rail data feed." }, 502);
+  }
+
+  if (!r.ok) {
+    return json({
+      error: `Service details unavailable (HTTP ${r.status}).`,
+      hint: (r.status === 401 || r.status === 403)
+        ? "Key not authorised for the Service Details product — check the subscription and whether it issued its own key (set LDB_SVC_KEY)."
+        : (r.status === 404 ? "Service ID not found (Darwin IDs expire after a few hours)." : ""),
+      detail: body.slice(0, 200),
+    }, 502);
+  }
+
+  let d;
+  try { d = JSON.parse(body); }
+  catch (e) { return json({ error: "Service details were not JSON." }, 502); }
+
+  return json(buildProgress(d), 200, { "cache-control": "public, max-age=20, s-maxage=20" });
 }
 
 /* Build the stop list + live position from a service-details response. */

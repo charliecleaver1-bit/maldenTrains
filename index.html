@@ -834,12 +834,13 @@ async function loadService(s){
   if(!s) return { stops:[], caption:"No information." };
   if(state.source === "live" && s.id){
     try{
-      const r = await fetch(`/api/service?id=${encodeURIComponent(s.id)}`, { headers:{accept:"application/json"} });
-      if(r.ok){
-        const d = await r.json();
-        if(d && Array.isArray(d.stops) && d.stops.length) return d;
-      }
-    }catch(e){ /* fall through to demo */ }
+      const r = await fetch(`/api/service?id=${encodeURIComponent(s.id)}&_=${Date.now()}`, {
+        headers:{accept:"application/json"}, cache:"no-store"
+      });
+      const d = await r.json().catch(()=>null);
+      if(r.ok && d && Array.isArray(d.stops) && d.stops.length) return d;
+      console.error("Journey detail fell back to demo:", (d && (d.error||d.hint)) || ("HTTP "+r.status));
+    }catch(e){ console.error("Journey detail fetch failed:", e); }
   }
   return demoService(s);
 }
