@@ -202,31 +202,33 @@ function buildProgress(d) {
 
   const raw = [...prev, here, ...next];
 
-  // Darwin only sometimes publishes an ACTUAL time (at). For most calling
-  // points you get a scheduled (st) and an estimated (et). So a stop counts as
-  // "departed" if Darwin gave an actual time OR its best-known time is already
-  // in the past — otherwise the train appears stuck at its origin.
+  // Has the train ACTUALLY left the station this board is anchored at?
+  // Darwin publishes an actual departure (atd) / arrival (ata) once it happens.
+  // If there's no actual time, the train has NOT moved — and we must not infer
+  // movement from the clock, or a train sitting at Waterloo gets drawn halfway
+  // down the line simply because its timetabled times have elapsed.
+  const anchorLeft = !!clock(d.atd) || !!clock(d.ata);
+  const anchorIdx = prev.length;                    // index of the anchor stop
+
   const nowMins = ukNowMins();
 
-  const stops = raw.map((c) => {
+  const stops = raw.map((c, i) => {
     const sched = clock(c.st);
     const est = clock(c.et);
     const act = clock(c.at);
-
-    // Best-known time: actual > estimated > scheduled. Using the ESTIMATE
-    // matters when a train is late — a stop isn't passed just because its
-    // scheduled time has gone by.
     const t = act || est || sched;
 
-    // Evidence order:
-    //  1. Darwin gave an actual time  -> definitely departed.
-    //  2. Darwin says the stop is still forecast ("et" in the future) -> not yet.
-    //  3. No live info at all -> fall back to the clock (best guess).
     let departed;
     if (act) {
-      departed = true;
+      departed = true;                              // hard evidence: it happened
+    } else if (i < anchorIdx) {
+      departed = true;                              // before the anchor: already passed
+    } else if (i === anchorIdx) {
+      departed = anchorLeft;                        // only if Darwin says so
+    } else if (!anchorLeft) {
+      departed = false;                             // still sat at the anchor — nothing ahead is passed
     } else if (est) {
-      departed = minutesSince(est, nowMins) >= 0;      // late trains shift this
+      departed = minutesSince(est, nowMins) >= 0;   // running: use the live estimate
     } else {
       departed = sched !== null && minutesSince(sched, nowMins) >= 0;
     }
@@ -239,7 +241,7 @@ function buildProgress(d) {
       platform: c.platform || null,
       departed,
       arrived: departed,
-      hasLiveTime: !!act || !!est,                     // was this backed by live data?
+      hasLiveTime: !!act || !!est,
       status: null,
       cancelled: !!c.isCancelled,
     };
