@@ -203,34 +203,40 @@ function buildProgress(d) {
   const raw = [...prev, here, ...next];
 
   // Has the train ACTUALLY left the station this board is anchored at?
-  // Darwin publishes an actual departure (atd) / arrival (ata) once it happens.
-  // If there's no actual time, the train has NOT moved — and we must not infer
-  // movement from the clock, or a train sitting at Waterloo gets drawn halfway
-  // down the line simply because its timetabled times have elapsed.
+  // Darwin publishes an actual time (atd/ata) once it genuinely happens.
   const anchorLeft = !!clock(d.atd) || !!clock(d.ata);
-  const anchorIdx = prev.length;                    // index of the anchor stop
-
+  const anchorIdx = prev.length;
   const nowMins = ukNowMins();
+
+  // "On time" means the estimate EQUALS the schedule — so resolve it to the
+  // scheduled clock time rather than discarding it.
+  const estOf = (c) => clock(c.et) || (isOnTime(c.et) ? clock(c.st) : null);
+
+  // A stop is passed only if BOTH hold:
+  //   (a) evidence it happened — an actual time, or the train has left the
+  //       anchor and this stop lies behind it, and
+  //   (b) its best-known time has actually elapsed.
+  // Neither alone is enough: (a) without (b) jumps the train ahead of itself;
+  // (b) without (a) invents movement from the timetable.
+  const anchorPassed = !!clock(here.at) || (anchorLeft && elapsed(estOf(here), nowMins));
 
   const stops = raw.map((c, i) => {
     const sched = clock(c.st);
-    const est = clock(c.et);
+    const est = estOf(c);
     const act = clock(c.at);
     const t = act || est || sched;
 
     let departed;
     if (act) {
-      departed = true;                              // hard evidence: it happened
+      departed = true;                                   // hard evidence
     } else if (i < anchorIdx) {
-      departed = true;                              // before the anchor: already passed
+      departed = elapsed(est || sched, nowMins);         // behind us, but still check the clock
     } else if (i === anchorIdx) {
-      departed = anchorLeft;                        // only if Darwin says so
-    } else if (!anchorLeft) {
-      departed = false;                             // still sat at the anchor — nothing ahead is passed
-    } else if (est) {
-      departed = minutesSince(est, nowMins) >= 0;   // running: use the live estimate
+      departed = anchorPassed;
+    } else if (!anchorPassed) {
+      departed = false;                                  // not past the anchor => nothing ahead is passed
     } else {
-      departed = sched !== null && minutesSince(sched, nowMins) >= 0;
+      departed = elapsed(est || sched, nowMins);
     }
 
     return {
@@ -268,6 +274,17 @@ function flatten(cp) {
 /* Darwin times are strings: "12:34" | "On time" | "Delayed" | "Cancelled". */
 function clock(v) {
   return (typeof v === "string" && /^\d{2}:\d{2}$/.test(v)) ? v : null;
+}
+
+/* "On time" is Darwin saying the estimate equals the schedule. */
+function isOnTime(v) {
+  return typeof v === "string" && /on\s*time/i.test(v);
+}
+
+/* Has "HH:MM" actually gone past yet? */
+function elapsed(t, nowMins) {
+  if (!clock(t)) return false;
+  return minutesSince(t, nowMins) >= 0;
 }
 
 /* Minutes past midnight, UK local time (Darwin publishes railway wall-clock). */
