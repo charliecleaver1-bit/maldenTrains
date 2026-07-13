@@ -217,6 +217,9 @@
     font-family:var(--display);font-size:12.5px;font-weight:600;outline:none;width:140px;max-width:100%;}
   .jrn-pill.add{color:var(--amber);border-style:dashed;padding:8px 14px;flex:0 0 auto;}
 
+  .jrn-empty{background:var(--ink-2);border:1px dashed var(--line);border-radius:14px;padding:18px 15px;
+    margin-bottom:14px;font-size:13.5px;color:var(--muted);text-align:center;}
+  .jrn-empty b{color:var(--text);font-weight:600;}
   .leg{display:flex;align-items:center;gap:12px;background:var(--ink-2);border:1px solid var(--line);
     border-radius:14px;padding:13px 15px;margin-bottom:14px;}
   .leg-route{flex:1;min-width:0;}
@@ -253,9 +256,15 @@
     border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500;}
   .picked .crs{font-family:var(--mono);font-size:11px;color:var(--muted);}
   .picked button{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;}
+  .jnote{font-size:12.5px;line-height:1.5;border-radius:11px;padding:11px 13px;margin-bottom:4px;}
+  .jnote.warn{background:rgba(181,115,11,.09);border:1px solid rgba(181,115,11,.28);color:#8A5709;}
+  .jnote b{font-weight:600;}
   .sheet-save{width:100%;border:0;border-radius:13px;padding:15px;font-family:var(--display);font-weight:700;font-size:15px;
     background:linear-gradient(180deg,var(--amber),var(--amber-dim));color:#fff;cursor:pointer;margin-top:8px;}
   .sheet-save:disabled{background:var(--surface-2);color:var(--muted-2);cursor:not-allowed;}
+  .sheet-delete{width:100%;background:transparent;border:1px solid rgba(192,57,43,.35);color:var(--red);
+    border-radius:13px;padding:13px;font-family:var(--display);font-weight:600;font-size:14px;cursor:pointer;margin-top:10px;}
+  .sheet-delete:hover{background:rgba(192,57,43,.06);}
   .sheet-cancel{width:100%;background:transparent;border:0;color:var(--muted);font-size:13px;padding:14px 0 0;cursor:pointer;}
 
   .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
@@ -425,6 +434,10 @@
     </button>
   </div>
 
+  <div class="jrn-empty" id="jrn-empty" hidden>
+    No journeys saved. Tap <b>&#xFF0B; Add journey</b> to set one up.
+  </div>
+
   <div class="alert" id="alert" role="status">
     <span class="dot"></span><span id="alert-txt"></span>
   </div>
@@ -497,7 +510,9 @@
     <label>Name this journey</label>
     <input id="jname" placeholder="e.g. Home" maxlength="20" oninput="checkJourney()" autocomplete="off" />
   </div>
+  <div class="jnote" id="jnote" hidden></div>
   <button class="sheet-save" id="jsave" disabled onclick="saveJourney()">Save journey</button>
+  <button class="sheet-delete" id="jdelete" hidden onclick="deleteJourney()">Delete this journey</button>
   <button class="sheet-cancel" onclick="closeJourneySheet()">Cancel</button>
 </div>
 
@@ -519,6 +534,7 @@ let state = {
   mode: "rail",         // "rail" | "bus"
   journeys: DEFAULT_JOURNEYS.slice(),
   jrnIdx: 0,            // which saved journey is showing
+  jrnEditIdx: null,     // journey being edited in the sheet (null = adding)
   source: "demo",       // "live" | "demo"
   services: [],
   messages: [],         // National Rail disruption messages (Darwin)
@@ -534,7 +550,8 @@ let state = {
 
 /* The journey currently being shown. */
 function curJourney(){
-  const j = state.journeys[state.jrnIdx] || DEFAULT_JOURNEYS[0];
+  const j = state.journeys[state.jrnIdx] || null;
+  if(!j) return { from:null, to:null, listTitle:"" };
   return { from:j.from, to:j.to, listTitle:`Later trains to ${shortName(j.to)}` };
 }
 
@@ -554,6 +571,7 @@ function shortName(crs){
    ============================================================ */
 async function fetchBoard(){
   const j = curJourney();
+  if(!j.from || !j.to){ state.messages = []; return { source:"live", services:[] }; }
   try{
     const ctrl = new AbortController();
     const timer = setTimeout(()=>ctrl.abort(), 8000);   // never hang forever
@@ -1221,37 +1239,20 @@ function renderJourneys(){
   el.innerHTML = pills + `<button class="jrn-pill add" onclick="openJourneySheet()">\uFF0B Add journey</button>`;
 }
 
-/* Inline rename, same pattern as the bus stops. */
+/* The pencil opens the full sheet so From/To, the name and Delete
+   are all editable in one place. */
 function editJourney(i, ev){
   if(ev) ev.stopPropagation();
-  const j = state.journeys[i]; if(!j) return;
-  const wrap = document.querySelectorAll("#jrn-switch .jrn-wrap")[i];
-  if(!wrap) return;
-  const input = document.createElement("input");
-  input.type = "text"; input.className = "jrn-edit"; input.maxLength = 20;
-  input.value = j.name;
-  let done = false;
-  const commit = (save)=>{
-    if(done) return; done = true;
-    if(save){
-      const clean = input.value.trim().slice(0,20);
-      if(clean) j.name = clean;
-      saveLocal("journeys", state.journeys);
-    }
-    renderJourneys(); paintLeg();
-  };
-  input.onkeydown = (e)=>{
-    if(e.key === "Enter"){ e.preventDefault(); commit(true); }
-    if(e.key === "Escape"){ e.preventDefault(); commit(false); }
-  };
-  input.onblur = ()=> commit(true);
-  wrap.replaceWith(input);
-  input.focus(); input.select();
+  openJourneySheet(i);
 }
 
 /* The From -> To header above the board. */
 function paintLeg(){
+  const leg = document.getElementById("leg");
   const j = state.journeys[state.jrnIdx];
+  const empty = document.getElementById("jrn-empty");
+  if(leg) leg.hidden = !j;
+  if(empty) empty.hidden = !!j;
   if(!j) return;
   const f = document.getElementById("leg-from");
   const t = document.getElementById("leg-to");
@@ -1267,10 +1268,26 @@ function paintLeg(){
 /* ---- add-journey sheet ---- */
 let jrnPick = { from:null, to:null };
 
-function openJourneySheet(){
-  jrnPick = { from:null, to:null };
+/* i = index to edit, or undefined to add a new one. */
+function openJourneySheet(i){
+  const editing = (typeof i === "number" && state.journeys[i]);
+  state.jrnEditIdx = editing ? i : null;
+
+  const j = editing ? state.journeys[i] : null;
+  jrnPick = {
+    from: j ? { c:j.from, n:stationName(j.from) } : null,
+    to:   j ? { c:j.to,   n:stationName(j.to)   } : null,
+    checked: j ? { from:j.from, to:j.to, count:1 } : null,   // existing legs are already trusted
+  };
+
+  document.getElementById("sheet-title").textContent = editing ? "Edit journey" : "Add a journey";
   const nm = document.getElementById("jname");
-  if(nm) nm.value = "";
+  if(nm) nm.value = j ? j.name : "";
+
+  const del = document.getElementById("jdelete");
+  if(del) del.hidden = !editing;
+
+  setJourneyNote("");
   fillSlot("from"); fillSlot("to"); checkJourney();
   document.getElementById("scrim").classList.add("open");
   document.getElementById("sheet").classList.add("open");
@@ -1326,13 +1343,71 @@ function checkJourney(){
   const ok = jrnPick.from && jrnPick.to && jrnPick.from.c !== jrnPick.to.c && nm && nm.value.trim();
   const btn = document.getElementById("jsave");
   if(btn) btn.disabled = !ok;
+  // Picking a new pair invalidates any previous check.
+  if(jrnPick.checked && (jrnPick.checked.from !== (jrnPick.from&&jrnPick.from.c) || jrnPick.checked.to !== (jrnPick.to&&jrnPick.to.c))){
+    jrnPick.checked = null;
+    setJourneyNote("");
+  }
 }
 
-function saveJourney(){
+function setJourneyNote(html, kind){
+  const el = document.getElementById("jnote");
+  if(!el) return;
+  el.className = "jnote" + (kind ? " "+kind : "");
+  el.innerHTML = html;
+  el.hidden = !html;
+}
+
+/* Ask the live board whether any DIRECT train runs this leg.
+   A train counts as direct only if it actually calls at the destination
+   (the backend already drops "change somewhere" services). */
+async function verifyDirect(from, to){
+  const r = await fetch(`/api/board?from=${from}&to=${to}&_=${Date.now()}`, {
+    headers:{accept:"application/json"}, cache:"no-store"
+  });
+  const d = await r.json().catch(()=>null);
+  if(!r.ok || !d || !Array.isArray(d.services)) throw new Error("check-failed");
+  return d.services.filter(s => typeof s.journeyMins === "number").length;
+}
+
+async function saveJourney(){
   const nm = document.getElementById("jname");
   if(!jrnPick.from || !jrnPick.to || !nm.value.trim()) return;
-  state.journeys.push({ name: nm.value.trim().slice(0,20), from: jrnPick.from.c, to: jrnPick.to.c });
-  state.jrnIdx = state.journeys.length - 1;
+  const from = jrnPick.from.c, to = jrnPick.to.c;
+
+  // Verify once. A second press after a failed check means "add it anyway".
+  const alreadyChecked = jrnPick.checked && jrnPick.checked.from === from && jrnPick.checked.to === to;
+  if(!alreadyChecked){
+    const btn = document.getElementById("jsave");
+    btn.disabled = true; btn.textContent = "Checking for direct trains…";
+    setJourneyNote("");
+    let count = null;
+    try{ count = await verifyDirect(from, to); }
+    catch(e){ count = -1; }              // couldn't check — don't block on our own failure
+    btn.disabled = false; btn.textContent = "Save journey";
+    jrnPick.checked = { from, to, count };
+
+    if(count === 0){
+      setJourneyNote(
+        `No direct trains found from <b>${esc(jrnPick.from.n)}</b> to <b>${esc(jrnPick.to.n)}</b> right now. ` +
+        `That usually means a change is required — but it can also just mean nothing is running at this hour. ` +
+        `Press Save again to add it anyway.`, "warn");
+      return;                            // block the first attempt
+    }
+    if(count === -1){
+      setJourneyNote("Couldn't check for direct trains just now — saving anyway.", "warn");
+    }
+  }
+
+  const name = nm.value.trim().slice(0,20);
+  if(state.jrnEditIdx !== null && state.journeys[state.jrnEditIdx]){
+    state.journeys[state.jrnEditIdx] = { name, from, to };   // update in place
+    state.jrnIdx = state.jrnEditIdx;
+  } else {
+    state.journeys.push({ name, from, to });
+    state.jrnIdx = state.journeys.length - 1;
+  }
+  state.jrnEditIdx = null;
   state.services = [];
   state.expandedId = null;
   saveLocal("journeys", state.journeys);
@@ -1342,16 +1417,23 @@ function saveJourney(){
   refresh(false);
 }
 
-function removeJourney(){
-  if(state.journeys.length <= 1) return;   // always keep at least one
-  state.journeys.splice(state.jrnIdx, 1);
-  state.jrnIdx = Math.max(0, Math.min(state.jrnIdx, state.journeys.length-1));
+/* Delete the journey being edited. */
+function deleteJourney(){
+  const i = state.jrnEditIdx;
+  if(i === null || !state.journeys[i]) return;
+  state.journeys.splice(i, 1);
+  state.jrnIdx = Math.max(0, Math.min(state.jrnIdx, state.journeys.length - 1));
+  state.jrnEditIdx = null;
   state.services = [];
+  state.expandedId = null;
   saveLocal("journeys", state.journeys);
   saveLocal("jrnidx", state.jrnIdx);
+  closeJourneySheet();
   render();
-  refresh(false);
+  if(state.journeys.length) refresh(false);
 }
+
+
 
 function syncStationPicker(){
   renderJourneys();
