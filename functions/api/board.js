@@ -12,15 +12,16 @@
  */
 
 const BASE = "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120";
-const ALLOWED = new Set(["NEM", "WAT", "VXH", "CLJ", "EAD", "WIM"]);
+const CRS = /^[A-Z]{3}$/;
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const from = (url.searchParams.get("from") || "NEM").toUpperCase();
   const to = (url.searchParams.get("to") || "WAT").toUpperCase();
 
-  if (!ALLOWED.has(from) || !ALLOWED.has(to)) {
-    return json({ error: "Unsupported station." }, 400);
+  // Any valid 3-letter CRS pair is allowed — journeys are user-defined now.
+  if (!CRS.test(from) || !CRS.test(to) || from === to) {
+    return json({ error: "Invalid station codes." }, 400);
   }
   if (!env.LDB_KEY) {
     return json({ error: "Live feed not configured. Add LDB_KEY in Pages settings." }, 503);
@@ -101,7 +102,7 @@ function normalise(s, to) {
     journeyMins,
     platform: s.platform || null,
     destination: dest,
-    via: to === "NEM" ? "calls New Malden" : "",
+    via: "",
     operator: s.operator || "South Western Railway",
     isBus: s.serviceType && s.serviceType !== "train",
     isCircular: !!s.isCircularRoute,                // the Kingston-loop flag
