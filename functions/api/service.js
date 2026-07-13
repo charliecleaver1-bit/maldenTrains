@@ -75,16 +75,34 @@ function buildProgress(d) {
     const sched = clock(c.st);
     const est = clock(c.et);
     const act = clock(c.at);
+
+    // Best-known time: actual > estimated > scheduled. Using the ESTIMATE
+    // matters when a train is late — a stop isn't passed just because its
+    // scheduled time has gone by.
     const t = act || est || sched;
-    const past = t !== null && minutesSince(t, nowMins) >= 0;
+
+    // Evidence order:
+    //  1. Darwin gave an actual time  -> definitely departed.
+    //  2. Darwin says the stop is still forecast ("et" in the future) -> not yet.
+    //  3. No live info at all -> fall back to the clock (best guess).
+    let departed;
+    if (act) {
+      departed = true;
+    } else if (est) {
+      departed = minutesSince(est, nowMins) >= 0;      // late trains shift this
+    } else {
+      departed = sched !== null && minutesSince(sched, nowMins) >= 0;
+    }
+
     return {
       name: c.name || c.locationName || "—",
       time: t,
       dep: t,
       arr: t,
       platform: c.platform || null,
-      departed: !!act || past,
-      arrived: !!act || past,
+      departed,
+      arrived: departed,
+      hasLiveTime: !!act || !!est,                     // was this backed by live data?
       status: null,
       cancelled: !!c.isCancelled,
     };
