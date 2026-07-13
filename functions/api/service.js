@@ -11,6 +11,8 @@
  */
 
 const BASE = "https://api1.raildata.org.uk/1010-service-details1_2/LDBWS/api/20220120";
+const DEP_BASE = "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120";
+const ARR_BASE = "https://api1.raildata.org.uk/1010-live-arrival-board-arr/LDBWS/api/20220120";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -45,7 +47,119 @@ export async function onRequestGet({ request, env }) {
   try { d = JSON.parse(body); }
   catch (e) { return json({ error: "Service details were not JSON." }, 502); }
 
-  return json(buildProgress(d), 200, { "cache-control": "public, max-age=20, s-maxage=20" });
+  const result = buildProgress(d);
+
+  // Darwin publishes no turnaround links, so infer the train that forms this
+  // one: whatever terminated at its origin, on the same platform, just before.
+  try {
+    const inbound = await inferInbound(env, d, result);
+    if (inbound) result.inbound = inbound;
+  } catch (e) { /* inference is best-effort — never break the panel */ }
+
+  return json(result, 200, { "cache-control": "public, max-age=20, s-maxage=20" });
+}
+
+/* ---------- "Likely formed by" inference ---------- */
+async function inferInbound(env, d, prog) {
+  const depKey = env.LDB_KEY;
+  const arrKey = env.LDB_ARR_KEY || env.LDB_KEY;
+  const svcKey = env.LDB_SVC_KEY || env.LDB_KEY;
+  if (!depKey || !arrKey) return null;
+
+  const stops = prog.stops || [];
+  if (stops.length < 2) return null;
+
+  // The origin terminus and the time our train leaves it.
+  const originName = stops[0].name;
+  const originTime = stops[0].time;
+  if (!originTime) return null;
+
+  const originCrs = await crsForOrigin(d, originName);
+  if (!originCrs) return null;
+
+  // 1. What platform does our train leave the origin from?
+  const depBoard = await getJson(
+    `${DEP_BASE}/GetDepBoardWithDetails/${originCrs}?numRows=10&timeOffset=-15&timeWindow=60`, depKey);
+  const ours = (depBoard && depBoard.trainServices || []).find(
+    (s) => s.std === originTime && sameDest(s, prog.destination));
+  const platform = ours && ours.platform ? String(ours.platform) : null;
+  if (!platform) return null;                       // no platform, no honest inference
+
+  // 2. What terminated on that platform shortly before we leave?
+  const arrBoard = await getJson(
+    `${ARR_BASE}/GetArrBoardWithDetails/${originCrs}?numRows=20&timeOffset=-40&timeWindow=45`, arrKey);
+  const candidates = (arrBoard && arrBoard.trainServices || []).filter((s) => {
+    if (!s.platform || String(s.platform) !== platform) return false;
+    const sta = clock(s.eta) || clock(s.sta);
+    if (!sta) return false;
+    const gap = minsBetween(sta, originTime);        // arrival -> our departure
+    return gap >= 2 && gap <= 35;                    // plausible turnaround
+  });
+  if (!candidates.length) return null;
+
+  // The latest arrival before we leave is the one that becomes us.
+  candidates.sort((a, b) => {
+    const ta = clock(a.eta) || clock(a.sta), tb = clock(b.eta) || clock(b.sta);
+    return minsBetween(tb, originTime) - minsBetween(ta, originTime);
+  });
+  const best = candidates[0];
+
+  const sta = clock(best.sta);
+  const eta = clock(best.eta) || sta;
+  let lateMins = 0;
+  if (sta && eta) lateMins = Math.max(0, minsBetween(sta, eta));
+
+  // Its own stop list, for the mini timeline.
+  let inStops = [];
+  if (best.serviceID) {
+    const det = await getJson(`${BASE}/GetServiceDetails/${encodeURIComponent(best.serviceID)}`, svcKey);
+    if (det) inStops = buildProgress(det).stops;
+  }
+
+  return {
+    id: best.serviceID || null,
+    origin: (best.origin && best.origin[0] && best.origin[0].locationName) || "—",
+    destination: originName,
+    operator: best.operator || "",
+    stops: inStops,
+    lateMins,
+    dueArr: sta,
+    expectedArr: eta,
+    platform,
+    inferred: true,
+  };
+}
+
+function sameDest(s, destName) {
+  const d = s.destination && s.destination[0] && s.destination[0].locationName;
+  return !destName || !d || d === destName;
+}
+
+/* Find the CRS of the service's origin. */
+async function crsForOrigin(d, originName) {
+  const prev = (d.previousCallingPoints && d.previousCallingPoints[0]
+    && d.previousCallingPoints[0].callingPoint) || [];
+  if (prev.length && prev[0].crs) return prev[0].crs;
+  if (d.crs && d.locationName === originName) return d.crs;   // starts at this station
+  return null;
+}
+
+async function getJson(url, key) {
+  try {
+    const r = await fetch(url, { headers: { "x-apikey": key, accept: "application/json" } });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+/* Minutes from time a to time b (both "HH:MM"), rolling over midnight. */
+function minsBetween(a, b) {
+  if (!clock(a) || !clock(b)) return NaN;
+  const m = (t) => (+t.slice(0, 2)) * 60 + (+t.slice(3, 5));
+  let dd = m(b) - m(a);
+  if (dd < -720) dd += 1440;
+  if (dd > 720) dd -= 1440;
+  return dd;
 }
 
 /* Build the stop list + live position from a service-details response. */
