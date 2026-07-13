@@ -27,7 +27,13 @@ export async function onRequestGet({ request, env }) {
 
   let d;
   try {
-    let res = await callPlanner(env, from, to);
+    // A hub id (HUBBRX) covers every mode at that site, and the planner will
+    // stop and ask which one you meant. Resolve it to the tube station first.
+    const from2 = await resolveHub(env, from);
+    const to2 = await resolveHub(env, to);
+    if (debug === "hub") return json({ debug: "hub", from, to, resolvedFrom: from2, resolvedTo: to2 });
+
+    let res = await callPlanner(env, from2, to2);
 
     // 300 = "multiple choices". TfL wants us to disambiguate — usually because
     // the id is a HUB (e.g. HUBWAT covers Waterloo tube AND rail) rather than a
@@ -35,12 +41,12 @@ export async function onRequestGet({ request, env }) {
     // rather than bouncing an error back at the user.
     if (res.status === 300) {
       const dis = res.body || {};
-      const f2 = pickDisambiguated(dis.fromLocationDisambiguation) || from;
-      const t2 = pickDisambiguated(dis.toLocationDisambiguation) || to;
+      const f2 = pickDisambiguated(dis.fromLocationDisambiguation) || from2;
+      const t2 = pickDisambiguated(dis.toLocationDisambiguation) || to2;
       if (debug === "disambig") {
         return json({ debug: "disambig", from, to, resolvedFrom: f2, resolvedTo: t2, raw: dis });
       }
-      if (f2 !== from || t2 !== to) {
+      if (f2 !== from2 || t2 !== to2) {
         res = await callPlanner(env, f2, t2);
       }
     }
@@ -218,6 +224,56 @@ function base(id) {
    instead and say nothing we can't back up. */
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+/* HUBxxx -> the tube station inside it (940GZZLU...). Cached, since a hub's
+   makeup never really changes. Returns the original id if it isn't a hub or
+   we can't resolve it — better to try than to fail outright. */
+const hubCache = new Map();
+async function resolveHub(env, id) {
+  if (!/^HUB/i.test(id || "")) return id;
+  if (hubCache.has(id)) return hubCache.get(id);
+
+  const cacheKey = new Request(`https://tube-hub.local/${id}`);
+  const cache = caches.default;
+  try {
+    const hit = await cache.match(cacheKey);
+    if (hit) { const v = await hit.text(); hubCache.set(id, v); return v; }
+  } catch (e) { /* miss */ }
+
+  let out = id;
+  try {
+    const r = await fetch(`https://api.tfl.gov.uk/StopPoint/${encodeURIComponent(id)}` + keyQS(env),
+      { headers: { accept: "application/json" } });
+    if (r.ok) {
+      const d = await r.json();
+      const kids = collectChildren(d);
+      // Prefer a station that actually serves the Underground.
+      const tube = kids.find((c) =>
+        /^940GZZLU/i.test(c.naptanId || "") ||
+        (c.modes || []).some((m) => ["tube", "dlr", "elizabeth-line"].includes(m)));
+      if (tube && tube.naptanId) out = tube.naptanId;
+    }
+  } catch (e) { /* fall through with the original id */ }
+
+  hubCache.set(id, out);
+  try {
+    await cache.put(cacheKey, new Response(out, {
+      headers: { "cache-control": "public, max-age=86400" },
+    }));
+  } catch (e) { /* non-fatal */ }
+  return out;
+}
+
+function collectChildren(d) {
+  const out = [];
+  const walk = (n) => {
+    if (!n) return;
+    if (n.naptanId || n.id) out.push({ naptanId: n.naptanId || n.id, modes: n.modes || [] });
+    (n.children || []).forEach(walk);
+  };
+  (d.children || []).forEach(walk);
+  return out;
+}
 
 /* One planner call, with a single back-off retry on rate limiting. */
 async function callPlanner(env, from, to) {
