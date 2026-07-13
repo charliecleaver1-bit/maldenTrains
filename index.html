@@ -448,6 +448,7 @@ let state = {
   station: "WAT",       // London-end station, always resets to Waterloo
   source: "demo",       // "live" | "demo"
   services: [],
+  messages: [],         // National Rail disruption messages (Darwin)
   updated: null,
   loading: false,
   expandedId: null,     // id of the train whose journey panel is open
@@ -484,8 +485,10 @@ async function fetchBoard(dir){
     if(!r.ok) throw new Error("proxy "+r.status);
     const data = await r.json();
     if(!data || !Array.isArray(data.services)) throw new Error("shape");
+    state.messages = Array.isArray(data.messages) ? data.messages : [];
     return { source:"live", services:data.services };
   }catch(e){
+    state.messages = [];
     return { source:"demo", services:demoBoard(dir) };
   }
 }
@@ -545,6 +548,7 @@ function isBoardable(s){
    (Waterloo/your stop for To London; New Malden for Home) — the slow
    Kingston-loop "long way round" trains. */
 function isLongWay(s){
+  if(s.isCircular) return true;   // Darwin flags the Kingston-loop services directly
   return typeof s.journeyMins === "number" && s.journeyMins > 40;
 }
 
@@ -645,12 +649,14 @@ function render(){
   const upcoming = visibleServices(all);
   const fastest = fastestValue(upcoming);   // journeyMins of the notably-quickest train, or null
 
-  // --- alert banner (derived from the upcoming services) ---
+  // --- alert banner: official National Rail message first, else derived ---
   const al = document.getElementById("alert"), alt=document.getElementById("alert-txt");
   const cx = upcoming.filter(s=>s.status==="cancel").length;
   const lateBad = upcoming.find(s=> s.status==="late" && s.etdMs && (s.etdMs-s.depMs)/60000 >= 5);
+  const notice = (state.messages && state.messages.length) ? state.messages[0] : null;
   al.className = "alert";
-  if(cx>0){ al.classList.add("show","bad"); alt.textContent = `${cx} ${cx>1?"services":"service"} cancelled in the next hour — check before you travel.`; }
+  if(notice){ al.classList.add("show","warn"); alt.textContent = notice; }
+  else if(cx>0){ al.classList.add("show","bad"); alt.textContent = `${cx} ${cx>1?"services":"service"} cancelled in the next hour — check before you travel.`; }
   else if(lateBad){ al.classList.add("show","warn"); alt.textContent = `Minor delays on the line right now.`; }
 
   // --- hero (the very next train) ---

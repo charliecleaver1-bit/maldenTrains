@@ -1,26 +1,18 @@
 /**
  * Cloudflare Pages Function — GET /api/board?from=NEM&to=WAT
  * ----------------------------------------------------------
- * Talks to the Realtime Trains *next-generation* API (data.rtt.io,
- * Bearer-token auth) and returns a small, clean JSON shape the
- * front-end understands. Your token stays server-side — the RTT
- * terms require it is never shipped in client code.
+ * Departure board powered by Darwin LDBWS via the Rail Data Marketplace.
+ * Darwin is free for commercial use (with National Rail attribution), unlike
+ * the Realtime Trains personal feed this replaces.
  *
- * Set ONE variable in  Cloudflare Pages → Settings → Variables & Secrets:
- *   RTT_TOKEN = the token from https://api-portal.rtt.io
+ * Needs LDB_KEY (your RDM *consumer key*) in Pages → Variables & Secrets.
  *
- * Your token is a long-life *refresh* token. This function swaps it for
- * a short-life *access* token (cached between requests) and uses that
- * for the data calls. If your token is already an access token, it falls
- * back to using it directly.
+ * The detailed board inlines each service's calling points, so journey time to
+ * the target station comes from the SAME call — no second board, no ID matching.
  */
 
-const BASE = "https://data.rtt.io";
-const NS = "gb-nr"; // Network Rail namespace (UK national rail)
-const ALLOWED = new Set(["NEM", "WAT", "VXH", "CLJ", "EAD", "WIM"]); // New Malden + selectable London-end stations
-
-// Cached access token, reused across requests on the same isolate.
-let cachedToken = null; // { token, expiresMs }
+const BASE = "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120";
+const ALLOWED = new Set(["NEM", "WAT", "VXH", "CLJ", "EAD", "WIM"]);
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -30,211 +22,113 @@ export async function onRequestGet({ request, env }) {
   if (!ALLOWED.has(from) || !ALLOWED.has(to)) {
     return json({ error: "Unsupported station." }, 400);
   }
-  if (!env.RTT_TOKEN) {
-    return json({ error: "Live feed not configured. Add RTT_TOKEN in Pages settings." }, 503);
+  if (!env.LDB_KEY) {
+    return json({ error: "Live feed not configured. Add LDB_KEY in Pages settings." }, 503);
   }
 
-  let accessToken;
-  try {
-    accessToken = await getAccessToken(env.RTT_TOKEN);
-  } catch (e) {
-    return json({ error: "Could not authenticate with the rail feed." }, 502);
-  }
+  const q = `${BASE}/GetDepBoardWithDetails/${from}` +
+    `?numRows=10&filterCrs=${to}&filterType=to&timeOffset=0&timeWindow=120`;
 
-  // Board anchored at `from` (the platform the user stands on).
-  let primary;
+  let d;
   try {
-    primary = await fetch(`${BASE}/rtt/location?code=${NS}:${from}&filterTo=${NS}:${to}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } });
+    const r = await fetch(q, { headers: { "x-apikey": env.LDB_KEY, accept: "application/json" } });
+    if (r.status === 401 || r.status === 403) return json({ error: "Rail feed rejected the key." }, 502);
+    if (!r.ok) return json({ error: `Rail feed error (${r.status}).` }, 502);
+    d = await r.json();
   } catch (e) {
     return json({ error: "Could not reach the rail data feed." }, 502);
   }
 
-  if (primary.status === 204) {
-    return json({ from, to, generatedAt: new Date().toISOString(), services: [] });
-  }
-  if (primary.status === 401) {
-    cachedToken = null; // token expired/invalid — drop it so next call re-auths
-    return json({ error: "Rail feed rejected the token." }, 502);
-  }
-  if (!primary.ok) {
-    return json({ error: `Rail feed error (${primary.status}).` }, 502);
-  }
-  const data = await primary.json();
-  const primaryServices = data.services || [];
-
-  // Second board, anchored at `to`, to read each train's time AT the target
-  // station. Widen its window to span this board's trains (plus travel time),
-  // otherwise the later departures have no matching arrival and get no journey
-  // time. Merged by service id. One extra call per refresh, not per train.
-  let minIso = null, maxIso = null;
-  for (const s of primaryServices) {
-    const dep = (s.temporalData || {}).departure || {};
-    const iso = dep.scheduleAdvertised || dep.realtimeForecast;
-    if (!iso) continue;
-    if (!minIso || iso < minIso) minIso = iso;
-    if (!maxIso || iso > maxIso) maxIso = iso;
-  }
-  const targetTimes = await fetchTargetTimes(accessToken, to, from, minIso, maxIso);
-
-  const services = primaryServices
-    .map((s) => normalise(s, to, targetTimes))
-    .filter((s) => s && s.std)
+  const services = (d.trainServices || [])
+    .map((s) => normalise(s, to))
+    .filter(Boolean)
+    // Darwin's "to" filter also returns trains you'd have to change off (e.g.
+    // Richmond services). Keep only ones that actually call at the target.
+    .filter((s) => s.journeyMins !== null)
     .slice(0, 12);
 
+  // National Rail disruption messages — free with Darwin, unlike RTT.
+  const messages = (d.nrccMessages || [])
+    .map((m) => String(m.value || m._ || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
   return json(
-    { from, to, generatedAt: new Date().toISOString(), services },
+    { from, to, generatedAt: new Date().toISOString(), services, messages },
     200,
     { "cache-control": "public, max-age=20, s-maxage=20" }
   );
 }
 
-/* Map serviceId -> ISO time at the target station (arrival preferred).
-   The [minIso, maxIso] window (this board's first/last departure) is widened
-   by −10 / +100 min so every train on the board has a matching far-end time. */
-async function fetchTargetTimes(accessToken, target, origin, minIso, maxIso) {
-  const map = {};
-  try {
-    let qs = `code=${NS}:${target}&filterFrom=${NS}:${origin}`;
-    if (minIso) qs += `&timeFrom=${encodeURIComponent(shiftLocalIso(minIso, -10))}`;
-    if (maxIso) qs += `&timeTo=${encodeURIComponent(shiftLocalIso(maxIso, 100))}`;
-    const r = await fetch(`${BASE}/rtt/location?${qs}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } });
-    if (!r.ok || r.status === 204) return map;
-    const d = await r.json();
-    for (const s of d.services || []) {
-      const uid = s.scheduleMetadata && s.scheduleMetadata.uniqueIdentity;
-      const t = s.temporalData || {};
-      const arr = t.arrival || {};
-      const dep = t.departure || {};
-      const iso = arr.realtimeForecast || arr.scheduleAdvertised || arr.realtimeActual
-        || dep.realtimeForecast || dep.scheduleAdvertised || dep.realtimeActual;
-      if (uid && iso) map[uid] = iso;
-    }
-  } catch (e) { /* journey time simply omitted if this fails */ }
-  return map;
-}
+/* Map one LDBWS service into the shape the front-end already expects. */
+function normalise(s, to) {
+  const std = s.std || null;                       // "12:10"
+  if (!std) return null;
 
-/* Shift a wall-clock ISO ("…THH:MM…") by N minutes, returned as a local
-   (no-offset) datetime string — RTT reads it in the location's timezone. */
-function shiftLocalIso(iso, deltaMin) {
-  const m = iso && iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (!m) return "";
-  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0));
-  d.setUTCMinutes(d.getUTCMinutes() + deltaMin);
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:00`;
-}
+  const calls = (s.subsequentCallingPoints && s.subsequentCallingPoints[0]
+    && s.subsequentCallingPoints[0].callingPoint) || [];
+  const target = calls.find((c) => (c.crs || "").toUpperCase() === to);
 
-/* ---- Auth: refresh token -> short-life access token (cached) ---- */
-async function getAccessToken(refreshToken) {
-  const now = Date.now();
-  if (cachedToken && cachedToken.expiresMs - 30000 > now) {
-    return cachedToken.token;
-  }
-  const r = await fetch(`${BASE}/api/get_access_token`, {
-    headers: { Authorization: `Bearer ${refreshToken}` },
-  });
-  if (!r.ok) {
-    // Token may already be a direct access token — use it as-is.
-    cachedToken = { token: refreshToken, expiresMs: now + 60000 };
-    return refreshToken;
-  }
-  const body = await r.json();
-  const token = body.token || refreshToken;
-  const expiresMs = body.validUntil ? Date.parse(body.validUntil) : now + 5 * 60000;
-  cachedToken = { token, expiresMs };
-  return token;
-}
-
-/* ---- Map one next-gen line-up object into the front-end shape ---- */
-function normalise(s, to, targetTimes) {
-  const t = s.temporalData || {};
-  const dep = t.departure || {};
-  const meta = s.locationMetadata || {};
-  const sched = s.scheduleMetadata || {};
-
-  const bookedIso = dep.scheduleAdvertised || dep.realtimeForecast || dep.realtimeActual;
-  if (!bookedIso) return null;
-
-  // Expected departure: actual if it has gone, otherwise the live forecast.
-  const expectedIso = dep.realtimeActual || dep.realtimeForecast || null;
-
-  // Lateness = expected minus booked, in minutes. Comparing the two timestamps
-  // is timezone-proof (both shift the same way), and unlike the feed's
-  // "lateness" field this works BEFORE the train has departed too.
-  let lateMins = 0;
-  if (expectedIso && bookedIso) {
-    const d = Math.round((Date.parse(expectedIso) - Date.parse(bookedIso)) / 60000);
-    if (!Number.isNaN(d)) lateMins = d;
+  // Journey time to the target station, straight from the inlined calling points.
+  let journeyMins = null;
+  if (target) {
+    const arr = pickTime(target.at, target.et, target.st);
+    const dep = pickTime(null, s.etd, s.std);
+    const mins = diffMins(dep, arr);
+    if (mins !== null && mins > 0) journeyMins = mins;
   }
 
-  const cancelled = dep.isCancelled === true || t.displayAs === "CANCELLED" || t.displayAs === "DIVERTED";
-
+  // Status. Darwin's etd is a string: "On time" | "12:34" | "Delayed" | "Cancelled".
+  const cancelled = !!s.isCancelled || isWord(s.etd, "cancelled");
   let status = "ontime";
   let etd = null;
   if (cancelled) {
     status = "cancel";
-  } else if (lateMins >= 1 && expectedIso) {
+  } else if (isClock(s.etd) && s.etd !== std) {
     status = "late";
-    etd = hhmm(expectedIso);
+    etd = s.etd;
+  } else if (isWord(s.etd, "delayed")) {
+    status = "late";                                // delayed, no estimate yet
   }
 
-  const platform = meta.platform ? meta.platform.actual || meta.platform.planned || null : null;
-  const destLoc = s.destination && s.destination[0];
-  const dest = (destLoc && destLoc.location && destLoc.location.description) || "—";
-  const operator = (sched.operator && sched.operator.name) || "South Western Railway";
-  const mode = sched.modeType || "TRAIN";
-
-  // Journey length from this station to the TARGET station (Waterloo/your
-  // chosen stop for To London; New Malden for Home), using the merged time.
-  let journeyMins = null;
-  const uid = sched.uniqueIdentity;
-  const targetIso = uid && targetTimes ? targetTimes[uid] : null;
-  if (targetIso && bookedIso) {
-    const d = Math.round((Date.parse(targetIso) - Date.parse(bookedIso)) / 60000);
-    if (!Number.isNaN(d) && d > 0) journeyMins = d;
-  }
-  // Fallback: if the train TERMINATES at the target (e.g. To London → Waterloo),
-  // the terminus time is already in this response — use it when unmatched.
-  if (journeyMins === null && bookedIso) {
-    const destCodes = (destLoc && destLoc.location && destLoc.location.shortCodes) || [];
-    const destTd = destLoc && destLoc.temporalData;
-    const destIso = destTd && (destTd.realtimeForecast || destTd.scheduleAdvertised || destTd.realtimeActual);
-    if (destCodes.indexOf(to) !== -1 && destIso) {
-      const d = Math.round((Date.parse(destIso) - Date.parse(bookedIso)) / 60000);
-      if (!Number.isNaN(d) && d > 0) journeyMins = d;
-    }
-  }
+  const dest = (s.destination && s.destination[0] && s.destination[0].locationName) || "—";
 
   return {
-    id: uid || `${hhmm(bookedIso)}-${dest}`,
-    std: hhmm(bookedIso),
+    id: s.serviceID || `${std}-${dest}`,
+    std,
     etd,
     status,
-    departed: !!dep.realtimeActual, // has it actually left this station yet?
+    departed: false,                                // Darwin drops departed trains from the board
     journeyMins,
-    platform,
+    platform: s.platform || null,
     destination: dest,
-    via: to === "NEM" ? "calls New Malden" : (mode !== "TRAIN" ? "rail replacement" : ""),
-    operator,
-    isBus: mode !== "TRAIN",
+    via: to === "NEM" ? "calls New Malden" : "",
+    operator: s.operator || "South Western Railway",
+    isBus: s.serviceType && s.serviceType !== "train",
+    isCircular: !!s.isCircularRoute,                // the Kingston-loop flag
+    delayReason: s.delayReason || null,
+    cancelReason: s.cancelReason || null,
   };
 }
 
-/* Read the published "HH:MM" straight from the RTT timestamp.
-   RTT gives railway (UK local) wall-clock times, so we do NOT timezone-
-   convert here — the user's device (already on UK time) anchors the
-   countdown. Converting on Cloudflare's UTC servers added a spurious
-   hour during British Summer Time. */
-function hhmm(iso) {
-  const m = typeof iso === "string" && iso.match(/T(\d{2}):(\d{2})/);
-  return m ? `${m[1]}:${m[2]}` : null;
+/* First usable clock value from actual > estimated > scheduled. */
+function pickTime(at, et, st) {
+  for (const v of [at, et, st]) if (isClock(v)) return v;
+  return null;
+}
+function isClock(v) { return typeof v === "string" && /^\d{2}:\d{2}$/.test(v); }
+function isWord(v, w) { return typeof v === "string" && v.toLowerCase().includes(w); }
+
+/* Minutes between two "HH:MM" wall-clock times, rolling over midnight. */
+function diffMins(a, b) {
+  if (!isClock(a) || !isClock(b)) return null;
+  const m = (t) => (+t.slice(0, 2)) * 60 + (+t.slice(3, 5));
+  let d = m(b) - m(a);
+  if (d < -720) d += 1440;                          // crossed midnight
+  return d;
 }
 
 function json(body, status = 200, extra = {}) {
   return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json; charset=utf-8", ...extra },
+    status, headers: { "content-type": "application/json; charset=utf-8", ...extra },
   });
 }
