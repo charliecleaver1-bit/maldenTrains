@@ -530,35 +530,19 @@
   </div><!-- /rail-view -->
 
   <div id="bus-view" hidden>
-    <!-- Finder (shown when no stop saved) -->
-    <div id="bus-setup">
-      <div class="bus-intro">Set your home bus stop once — the board opens on it every time.</div>
-      <button class="loc-btn" id="loc-btn" onclick="findByLocation()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg>
-        Use my location
-      </button>
-      <div class="divider">or enter a postcode</div>
-      <div class="pc-field">
-        <span class="plabel">Postcode</span>
-        <input type="text" id="pc-input" spellcheck="false" placeholder="KT3 3HL" aria-label="Postcode" onkeydown="if(event.key==='Enter')findByPostcode()" />
-        <button class="act-primary" onclick="findByPostcode()">Search</button>
-      </div>
-      <div class="finder-msg" id="finder-msg"></div>
-      <div class="results" id="bus-results"></div>
+    <div class="lbl-cap">Your bus stops</div>
+    <div class="jrn-switch" id="stop-switch"></div>
+
+    <div class="jrn-empty" id="bus-empty" hidden>
+      No bus stops saved. Tap <b>&#xFF0B; Add stop</b> to find one near you.
     </div>
 
-    <!-- Board (shown when a stop is saved) -->
     <div id="bus-board-wrap" hidden>
-      <div class="stop-switch" id="stop-switch"></div>
       <div class="stop-head">
         <div class="stop-head-main">
           <div class="lbl">Your bus stop</div>
           <div class="stop-name" id="bus-stop-name">—</div>
           <div class="stop-toward" id="bus-stop-toward"></div>
-        </div>
-        <div class="stop-actions">
-          <button class="act-ghost" onclick="renameStop()">Rename</button>
-          <button class="act-ghost" onclick="removeStop()">Remove</button>
         </div>
       </div>
       <div class="board" id="bus-board" aria-live="polite"></div>
@@ -640,6 +624,40 @@
   <button class="sheet-cancel" onclick="closeTubeSheet()">Cancel</button>
 </div>
 
+<div class="scrim" id="bscrim" onclick="closeBusSheet()"></div>
+<div class="sheet" id="bsheet" role="dialog" aria-label="Add a bus stop">
+  <div class="grab"></div>
+  <h2 id="bsheet-title">Add a bus stop</h2>
+  <p class="sheet-hint">Find the stop you use, then give it a name.</p>
+
+  <div id="b-find">
+    <button class="loc-btn" id="loc-btn" onclick="findByLocation()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg>
+      Use my location
+    </button>
+    <div class="divider">or enter a postcode</div>
+    <div class="pc-field">
+      <span class="plabel">Postcode</span>
+      <input type="text" id="pc-input" spellcheck="false" placeholder="KT3 3HL" aria-label="Postcode" onkeydown="if(event.key==='Enter')findByPostcode()" />
+      <button class="act-primary" onclick="findByPostcode()">Search</button>
+    </div>
+    <div class="finder-msg" id="finder-msg"></div>
+    <div class="results" id="bus-results"></div>
+  </div>
+
+  <div id="b-picked-wrap" hidden>
+    <div class="fld"><label>Stop</label><div id="b-picked"></div></div>
+    <div class="fld">
+      <label>Name this stop</label>
+      <input id="bname" placeholder="e.g. Home" maxlength="24" autocomplete="off" />
+    </div>
+  </div>
+
+  <button class="sheet-save" id="bsave" disabled onclick="saveBusStop()">Save stop</button>
+  <button class="sheet-delete" id="bdelete" hidden onclick="deleteBusStop()">Delete this stop</button>
+  <button class="sheet-cancel" onclick="closeBusSheet()">Cancel</button>
+</div>
+
 <script src="/stations.js"></script>
 <script>
 "use strict";
@@ -670,6 +688,7 @@ let state = {
   busIdx: 0,            // index of the stop currently shown
   busData: null,        // last bus arrivals payload
   busSource: "demo",
+  busEditIdx: null,     // stop being edited in the sheet (null = adding)
   tubeJourneys: [],     // [{name, from:{id,name}, to:{id,name}, lines:[]}]
   tubeIdx: 0,
   tubeEditIdx: null,
@@ -1643,10 +1662,8 @@ function applyMode(){
   document.getElementById("mode-tube").setAttribute("aria-selected", String(m==="tube"));
 
   if(m === "bus"){
-    const hasStop = state.busStops.length > 0;
-    document.getElementById("bus-setup").hidden = hasStop;
-    document.getElementById("bus-board-wrap").hidden = !hasStop;
-    if(hasStop){ renderSwitcher(); fillStopHead(); }
+    renderSwitcher();
+    if(curStop()) fillStopHead();
   }
   if(m === "tube"){
     renderTubePills();
@@ -1716,50 +1733,13 @@ function renderStops(stops){
 }
 let stopCache = {};
 
-function pickStop(i){
-  const s = stopCache[i];
-  if(!s) return;
-  // add (avoid duplicates), then select it
-  let idx = state.busStops.findIndex(x => x.id === s.id);
-  if(idx < 0){ state.busStops.push(s); idx = state.busStops.length - 1; }
-  state.busIdx = idx;
-  state.busData = null;
-  saveLocal("busstops", state.busStops);
-  document.getElementById("bus-setup").hidden = true;
-  document.getElementById("bus-board-wrap").hidden = false;
-  document.getElementById("bus-results").innerHTML = "";
-  document.getElementById("finder-msg").textContent = "";
-  renderSwitcher();
-  fillStopHead();
-  refresh(false);
-}
+/* ---- bus stops: pills, add/edit sheet, delete ---- */
 
-/* Switch between saved stops. */
 function setBusStop(i){
-  if(i === state.busIdx || !state.busStops[i]) return;
+  if(!state.busStops[i]) return;
   state.busIdx = i;
   state.busData = null;
   saveLocal("busidx", i);
-  renderSwitcher();
-  fillStopHead();
-  refresh(false);
-}
-
-/* Go back to the finder to add another stop (keeps existing ones). */
-function addStopFlow(){
-  document.getElementById("bus-board-wrap").hidden = true;
-  document.getElementById("bus-setup").hidden = false;
-  document.getElementById("bus-results").innerHTML = "";
-  document.getElementById("finder-msg").textContent = "";
-}
-
-function removeStop(){
-  if(!state.busStops.length) return;
-  state.busStops.splice(state.busIdx, 1);
-  state.busIdx = Math.max(0, Math.min(state.busIdx, state.busStops.length - 1));
-  state.busData = null;
-  saveLocal("busstops", state.busStops);
-  if(!state.busStops.length){ addStopFlow(); return; }
   renderSwitcher();
   fillStopHead();
   refresh(false);
@@ -1769,68 +1749,142 @@ function renderSwitcher(){
   const el = document.getElementById("stop-switch");
   if(!el) return;
   const pills = state.busStops.map((s,i)=>
-    `<span class="pill-wrap">
-       <button class="stop-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(pillLabel(s))}</button>
-       <button class="pencil" aria-label="Rename this stop" title="Rename" onclick="editPill(${i},event)">
+    `<span class="jrn-wrap">
+       <button class="jrn-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(pillLabel(s))}</button>
+       <button class="jrn-pencil" aria-label="Edit stop" title="Edit" onclick="openBusSheet(${i},event)">
          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
        </button>
-     </span>`
-  ).join("");
-  el.innerHTML = pills + `<button class="stop-pill add" onclick="addStopFlow()">＋ Add</button>`;
+     </span>`).join("");
+  el.innerHTML = pills + `<button class="jrn-pill add" onclick="openBusSheet()">\uFF0B Add stop</button>`;
+
+  const has = state.busStops.length > 0;
+  document.getElementById("bus-empty").hidden = has;
+  document.getElementById("bus-board-wrap").hidden = !has;
 }
 
 /* A user-given name wins; otherwise a tidied version of the TfL stop name. */
 function pillLabel(s){
   if(s.label) return s.label;
   const short = s.name.replace(/ Station$/,"").replace(/^New Malden /,"");
-  return short + (s.letter ? ` · ${s.letter}` : "");
-}
-
-/* Inline rename — swap the pill for a text field, commit on Enter/blur. */
-function editPill(i, ev){
-  if(ev) ev.stopPropagation();
-  const s = state.busStops[i]; if(!s) return;
-  const wrap = document.querySelectorAll("#stop-switch .pill-wrap")[i];
-  if(!wrap) return;
-  const input = document.createElement("input");
-  input.type = "text"; input.className = "pill-edit"; input.maxLength = 24;
-  input.value = s.label || pillLabel(s);
-  input.setAttribute("aria-label", "Stop name");
-  let done = false;
-  const commit = (save)=>{
-    if(done) return; done = true;
-    if(save){
-      const clean = input.value.trim().slice(0,24);
-      s.label = clean || null;                  // blank clears back to the default name
-      saveLocal("busstops", state.busStops);
-    }
-    renderSwitcher();
-    fillStopHead();
-  };
-  input.onkeydown = (e)=>{
-    if(e.key === "Enter"){ e.preventDefault(); commit(true); }
-    if(e.key === "Escape"){ e.preventDefault(); commit(false); }
-  };
-  input.onblur = ()=> commit(true);
-  wrap.replaceWith(input);
-  input.focus(); input.select();
-}
-
-function renameStop(){
-  const i = state.busIdx;
-  editPill(i);
+  return short + (s.letter ? ` \u00b7 ${s.letter}` : "");
 }
 
 function fillStopHead(){
   const s = curStop(); if(!s) return;
   document.getElementById("bus-stop-name").textContent = s.label || s.name;
   const bits = [];
-  if(s.label) bits.push(s.name);               // show the real stop name underneath a nickname
+  if(s.label) bits.push(s.name);
   if(s.toward) bits.push(`towards ${s.toward}`);
   if(s.letter) bits.push(`Stop ${s.letter}`);
   if(s.routes && s.routes.length) bits.push(`routes ${s.routes.slice(0,6).join(", ")}`);
-  document.getElementById("bus-stop-toward").textContent = bits.join(" · ");
+  document.getElementById("bus-stop-toward").textContent = bits.join(" \u00b7 ");
 }
+
+/* ---- the sheet (same shape as rail + tube) ---- */
+let busPick = null;      // the stop chosen in the sheet
+
+function openBusSheet(i, ev){
+  if(ev) ev.stopPropagation();
+  const editing = (typeof i === "number" && state.busStops[i]);
+  state.busEditIdx = editing ? i : null;
+  const s = editing ? state.busStops[i] : null;
+
+  busPick = s || null;
+
+  document.getElementById("bsheet-title").textContent = editing ? "Edit bus stop" : "Add a bus stop";
+  document.getElementById("bdelete").hidden = !editing;
+  document.getElementById("bname").value = s ? (s.label || "") : "";
+
+  // Editing: skip the finder, go straight to naming. Adding: show the finder.
+  document.getElementById("b-find").hidden = !!editing;
+  document.getElementById("b-picked-wrap").hidden = !editing;
+  document.getElementById("bus-results").innerHTML = "";
+  document.getElementById("finder-msg").textContent = "";
+  if(editing) paintBusPicked();
+  checkBus();
+
+  document.getElementById("bscrim").classList.add("open");
+  document.getElementById("bsheet").classList.add("open");
+}
+
+function closeBusSheet(){
+  document.getElementById("bscrim").classList.remove("open");
+  document.getElementById("bsheet").classList.remove("open");
+}
+
+function paintBusPicked(){
+  const el = document.getElementById("b-picked");
+  if(!el || !busPick) return;
+  const bits = [];
+  if(busPick.toward) bits.push(`towards ${busPick.toward}`);
+  if(busPick.letter) bits.push(`Stop ${busPick.letter}`);
+  el.innerHTML = `<div class="picked">${esc(busPick.name)}
+    ${bits.length?`<span class="crs">${esc(bits.join(" \u00b7 "))}</span>`:""}
+    ${state.busEditIdx===null?`<button onclick="clearBusPick()">change</button>`:""}</div>`;
+}
+
+function clearBusPick(){
+  busPick = null;
+  document.getElementById("b-find").hidden = false;
+  document.getElementById("b-picked-wrap").hidden = true;
+  checkBus();
+}
+
+/* Chosen from the finder results. */
+function pickStop(i){
+  const s = stopCache[i];
+  if(!s) return;
+  busPick = { ...s };
+  document.getElementById("b-find").hidden = true;
+  document.getElementById("b-picked-wrap").hidden = false;
+  document.getElementById("bname").value = "";
+  paintBusPicked();
+  checkBus();
+  document.getElementById("bname").focus();
+}
+
+function checkBus(){
+  const btn = document.getElementById("bsave");
+  if(btn) btn.disabled = !busPick;
+}
+
+function saveBusStop(){
+  if(!busPick) return;
+  const label = (document.getElementById("bname").value || "").trim().slice(0,24);
+  const entry = { ...busPick, label: label || null };
+
+  if(state.busEditIdx !== null && state.busStops[state.busEditIdx]){
+    state.busStops[state.busEditIdx] = entry;
+    state.busIdx = state.busEditIdx;
+  } else {
+    const dupe = state.busStops.findIndex(x => x.id === entry.id);
+    if(dupe >= 0){ state.busStops[dupe] = entry; state.busIdx = dupe; }
+    else { state.busStops.push(entry); state.busIdx = state.busStops.length - 1; }
+  }
+  state.busEditIdx = null;
+  state.busData = null;
+  saveLocal("busstops", state.busStops);
+  saveLocal("busidx", state.busIdx);
+  closeBusSheet();
+  renderSwitcher();
+  fillStopHead();
+  refresh(false);
+}
+
+function deleteBusStop(){
+  const i = state.busEditIdx;
+  if(i === null || !state.busStops[i]) return;
+  state.busStops.splice(i, 1);
+  state.busIdx = Math.max(0, Math.min(state.busIdx, state.busStops.length - 1));
+  state.busEditIdx = null;
+  state.busData = null;
+  saveLocal("busstops", state.busStops);
+  saveLocal("busidx", state.busIdx);
+  closeBusSheet();
+  renderSwitcher();
+  if(state.busStops.length){ fillStopHead(); refresh(false); }
+}
+
 
 /* ---- bus board ---- */
 async function loadBusBoard(){
