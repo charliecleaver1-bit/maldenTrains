@@ -48,6 +48,23 @@ export async function onRequestGet({ request, env }) {
     .filter((s) => s.journeyMins !== null)
     .slice(0, 12);
 
+  // /api/board?from=X&to=Y&debug=platform — what is Darwin actually sending?
+  if (url.searchParams.get("debug") === "platform") {
+    return json({
+      debug: "platform",
+      from, to,
+      locationName: d.locationName,
+      platformAvailable: d.platformAvailable,   // Darwin's own "do we publish platforms here" flag
+      raw: (d.trainServices || []).slice(0, 10).map((s) => ({
+        std: s.std,
+        dest: s.destination && s.destination[0] && s.destination[0].locationName,
+        platform: s.platform === undefined ? "(absent)" : s.platform,
+        typeofPlatform: typeof s.platform,
+      })),
+      afterNormalise: services.map((s) => ({ std: s.std, platform: s.platform })),
+    });
+  }
+
   // National Rail disruption messages — free with Darwin, unlike RTT.
   const messages = (d.nrccMessages || [])
     .map((m) => String(m.value || m._ || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim())
