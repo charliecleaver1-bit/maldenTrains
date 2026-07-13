@@ -25,11 +25,17 @@ export async function onRequestGet({ request, env }) {
 
   if (debug) return json({ debug: "search", q, raw: d });
 
-  const stations = (d.matches || []).map((m) => ({
-    id: m.id,                                    // e.g. 940GZZLUWLO
-    name: (m.name || "").replace(/ Underground Station$/i, "").replace(/ Station$/i, ""),
-    lines: (m.lines || []).map((l) => l.id),     // used for the little colour dots
-  }));
+  const stations = (d.matches || [])
+    .map((m) => ({
+      id: m.id,                                  // e.g. 940GZZLUWLO
+      name: (m.name || "").replace(/ Underground Station$/i, "").replace(/ Station$/i, ""),
+      lines: (m.lines || []).map((l) => l.id),   // used for the little colour dots
+      isHub: /^HUB/i.test(m.id || ""),
+    }))
+    // Hub ids (HUBWAT = "Waterloo, all modes") make the journey planner return
+    // a 300 "which one did you mean?". Prefer the specific station id.
+    .filter((s) => !s.isHub)
+    .map(({ isHub, ...s }) => s);
 
   return json({ stations }, 200, { "cache-control": "public, max-age=600, s-maxage=600" });
 }

@@ -25,20 +25,27 @@ export async function onRequestGet({ request, env }) {
   if (!from || !to) return json({ error: "Need from and to station ids." }, 400);
   if (from === to) return json({ error: "Those are the same station." }, 400);
 
-  const api = `https://api.tfl.gov.uk/Journey/JourneyResults/${encodeURIComponent(from)}/to/${encodeURIComponent(to)}` +
-    `?mode=tube,elizabeth-line,dlr&timeIs=Departing&journeyPreference=LeastTime` + keyQS(env, true);
-
   let d;
   try {
-    let r = await fetch(api, { headers: { accept: "application/json" } });
+    let res = await callPlanner(env, from, to);
 
-    // TfL rate-limits hard without an API key (~50 req/min PER IP, and
-    // Cloudflare shares IPs). Back off once, then explain properly.
-    if (r.status === 429) {
-      await sleep(700);
-      r = await fetch(api, { headers: { accept: "application/json" } });
+    // 300 = "multiple choices". TfL wants us to disambiguate — usually because
+    // the id is a HUB (e.g. HUBWAT covers Waterloo tube AND rail) rather than a
+    // single station. TfL hands back its candidates, so pick the best and retry
+    // rather than bouncing an error back at the user.
+    if (res.status === 300) {
+      const dis = res.body || {};
+      const f2 = pickDisambiguated(dis.fromLocationDisambiguation) || from;
+      const t2 = pickDisambiguated(dis.toLocationDisambiguation) || to;
+      if (debug === "disambig") {
+        return json({ debug: "disambig", from, to, resolvedFrom: f2, resolvedTo: t2, raw: dis });
+      }
+      if (f2 !== from || t2 !== to) {
+        res = await callPlanner(env, f2, t2);
+      }
     }
-    if (r.status === 429) {
+
+    if (res.status === 429) {
       return json({
         error: "TfL is rate-limiting us (429).",
         hint: env.TFL_APP_KEY
@@ -47,11 +54,19 @@ export async function onRequestGet({ request, env }) {
         hasKey: !!env.TFL_APP_KEY,
       }, 429);
     }
-    if (!r.ok) {
-      const body = await r.text();
-      return json({ error: `TfL planner error (${r.status}).`, detail: body.slice(0, 200) }, 502);
+    if (res.status === 300) {
+      return json({
+        error: "TfL couldn't pin down those stations.",
+        hint: "Pick the stations again from the search list — one of them is ambiguous.",
+      }, 502);
     }
-    d = await r.json();
+    if (!res.ok) {
+      return json({
+        error: `TfL planner error (${res.status}).`,
+        detail: typeof res.body === "string" ? res.body.slice(0, 200) : JSON.stringify(res.body || {}).slice(0, 200),
+      }, 502);
+    }
+    d = res.body;
   } catch (e) {
     return json({ error: "Could not reach TfL." }, 502);
   }
@@ -196,6 +211,38 @@ function labelFor(lineId, direction) {
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+/* One planner call, with a single back-off retry on rate limiting. */
+async function callPlanner(env, from, to) {
+  const api = `https://api.tfl.gov.uk/Journey/JourneyResults/${encodeURIComponent(from)}/to/${encodeURIComponent(to)}` +
+    `?mode=tube,elizabeth-line,dlr&timeIs=Departing&journeyPreference=LeastTime` + keyQS(env, true);
+
+  let r = await fetch(api, { headers: { accept: "application/json" } });
+  if (r.status === 429) {
+    await sleep(700);
+    r = await fetch(api, { headers: { accept: "application/json" } });
+  }
+
+  const text = await r.text();
+  let body;
+  try { body = JSON.parse(text); } catch (e) { body = text; }
+  return { ok: r.ok, status: r.status, body };
+}
+
+/* TfL ranks its disambiguation candidates — take the best one that's a real
+   stop point, preferring an exact tube station id over a hub. */
+function pickDisambiguated(dis) {
+  if (!dis || !Array.isArray(dis.disambiguationOptions)) return null;
+  const opts = dis.disambiguationOptions
+    .filter((o) => o && o.place)
+    .sort((a, b) => (b.matchQuality || 0) - (a.matchQuality || 0));
+  if (!opts.length) return null;
+
+  // A 940G… id is a specific station; prefer it over a HUB… parent.
+  const exact = opts.find((o) => /^940G/i.test(o.place.naptanId || o.place.icsCode || ""));
+  const best = exact || opts[0];
+  return best.place.naptanId || best.place.icsCode || null;
+}
 
 function cleanName(n) {
   return String(n || "").replace(/ Underground Station$/i, "").replace(/ Station$/i, "");

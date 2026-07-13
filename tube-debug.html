@@ -63,10 +63,13 @@
     <div class="row">
       <button onclick="go('/api/tube/plan?from='+f.value+'&to='+t.value,'s3')">Run</button>
       <button class="alt" onclick="go('/api/tube/plan?debug=dir&from='+f.value+'&to='+t.value,'s3')">Directions</button>
+      <button class="alt" onclick="go('/api/tube/plan?debug=disambig&from='+f.value+'&to='+t.value,'s3')">Disambiguation</button>
       <button class="alt" onclick="go('/api/tube/plan?debug=1&from='+f.value+'&to='+t.value,'s3')">Raw</button>
     </div>
     <pre id="s3">—</pre>
-    <div class="hint">Defaults are Waterloo → Canary Wharf. Grab other ids from the search above.</div>
+    <div class="hint">Defaults are Waterloo → Canary Wharf. Grab other ids from the search above.
+      A <b>300</b> from TfL means "which station did you mean?" — hit <b>Disambiguation</b> to see the candidates
+      and which one we picked. Ids starting <code>HUB</code> are the usual culprit.</div>
   </div>
 
   <div class="card">
