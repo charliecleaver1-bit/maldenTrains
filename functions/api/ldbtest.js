@@ -10,7 +10,7 @@
  *   ?raw=1   -> dump the untouched JSON for the first service
  */
 
-const BASE = "https://api1.raildata.org.uk/1010-live-departure-board-dep/LDBWS/api/20220120";
+const BASE = "https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -22,27 +22,31 @@ export async function onRequestGet({ request, env }) {
     return json({ error: "LDB_KEY not set. Add your RDM consumer key in Pages → Variables & Secrets." }, 503);
   }
 
-  const q = `${BASE}/GetDepBoardWithDetails/${from}` +
-    `?numRows=10&filterCrs=${to}&filterType=to&timeOffset=0&timeWindow=120`;
+  const qs = `?numRows=10&filterCrs=${to}&filterType=to&timeOffset=0&timeWindow=120`;
+  const headers = { "x-apikey": env.LDB_KEY, accept: "application/json" };
 
-  let r, body;
-  try {
-    r = await fetch(q, { headers: { "x-apikey": env.LDB_KEY, accept: "application/json" } });
-    body = await r.text();
-  } catch (e) {
-    return json({ error: "Could not reach LDBWS.", detail: String(e) }, 502);
+  // Try the detailed board first (has calling points); fall back to the plain one.
+  const attempts = [
+    ["GetDepBoardWithDetails", `${BASE}/GetDepBoardWithDetails/${from}${qs}`],
+    ["GetDepartureBoard", `${BASE}/GetDepartureBoard/${from}${qs}`],
+  ];
+
+  const tried = {};
+  let d = null, used = null;
+  for (const [label, q] of attempts) {
+    try {
+      const r = await fetch(q, { headers });
+      const body = await r.text();
+      if (!r.ok) { tried[label] = { status: r.status, body: body.slice(0, 160) }; continue; }
+      try { d = JSON.parse(body); used = label; tried[label] = { status: 200 }; break; }
+      catch (e) { tried[label] = { status: 200, note: "not JSON", body: body.slice(0, 160) }; }
+    } catch (e) { tried[label] = { error: String(e) }; }
   }
 
-  if (!r.ok) {
-    return json({ error: `LDBWS HTTP ${r.status}`, hint: hintFor(r.status), body: body.slice(0, 400) }, 502);
-  }
-
-  let d;
-  try { d = JSON.parse(body); }
-  catch (e) { return json({ error: "Response was not JSON.", body: body.slice(0, 400) }, 502); }
+  if (!d) return json({ error: "No LDBWS variant worked.", tried, hint: hintFor(502) }, 502);
 
   const services = d.trainServices || [];
-  if (raw) return json({ raw: true, firstService: services[0] || null, topLevelKeys: Object.keys(d) });
+  if (raw) return json({ raw: true, used, firstService: services[0] || null, topLevelKeys: Object.keys(d) });
 
   // Summarise what we'd need for the migration.
   const rows = services.slice(0, 8).map((s) => {
@@ -62,7 +66,7 @@ export async function onRequestGet({ request, env }) {
   });
 
   return json({
-    ok: true, from, to,
+    ok: true, used, tried, from, to,
     locationName: d.locationName, crs: d.crs,
     platformAvailable: d.platformAvailable,
     generatedAt: d.generatedAt,
