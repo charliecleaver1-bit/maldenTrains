@@ -78,16 +78,23 @@ async function inferInbound(env, d, prog) {
   if (!originCrs) return null;
 
   // 1. What platform does our train leave the origin from?
+  const depOffset = minsFromNowUK(originTime);
   const depBoard = await getJson(
-    `${DEP_BASE}/GetDepBoardWithDetails/${originCrs}?numRows=10&timeOffset=-15&timeWindow=60`, depKey);
+    `${DEP_BASE}/GetDepBoardWithDetails/${originCrs}` +
+    `?numRows=20&timeOffset=${clampOffset(depOffset - 10)}&timeWindow=30`, depKey);
   const ours = (depBoard && depBoard.trainServices || []).find(
     (s) => s.std === originTime && sameDest(s, prog.destination));
   const platform = ours && ours.platform ? String(ours.platform) : null;
   if (!platform) return null;                       // no platform, no honest inference
 
   // 2. What terminated on that platform shortly before we leave?
+  //    IMPORTANT: anchor the arrivals window to OUR DEPARTURE TIME, not to
+  //    "now" — a train leaving in 40 minutes is formed by an inbound that
+  //    hasn't arrived yet, which a now-anchored window would never see.
+  const offset = minsFromNowUK(originTime);         // + = in the future
   const arrBoard = await getJson(
-    `${ARR_BASE}/GetArrBoardWithDetails/${originCrs}?numRows=20&timeOffset=-40&timeWindow=45`, arrKey);
+    `${ARR_BASE}/GetArrBoardWithDetails/${originCrs}` +
+    `?numRows=20&timeOffset=${clampOffset(offset - 40)}&timeWindow=45`, arrKey);
   const candidates = (arrBoard && arrBoard.trainServices || []).filter((s) => {
     if (!s.platform || String(s.platform) !== platform) return false;
     const sta = clock(s.eta) || clock(s.sta);
@@ -142,6 +149,22 @@ async function crsForOrigin(d, originName) {
   if (prev.length && prev[0].crs) return prev[0].crs;
   if (d.crs && d.locationName === originName) return d.crs;   // starts at this station
   return null;
+}
+
+/* How many minutes from now (UK time) is "HH:MM"? Positive = future. */
+function minsFromNowUK(t) {
+  if (!clock(t)) return 0;
+  const now = ukNowMins();
+  const m = (+t.slice(0, 2)) * 60 + (+t.slice(3, 5));
+  let d = m - now;
+  if (d < -720) d += 1440;
+  if (d > 720) d -= 1440;
+  return d;
+}
+
+/* LDBWS accepts a timeOffset between -120 and +119 minutes. */
+function clampOffset(n) {
+  return Math.max(-120, Math.min(119, Math.round(n)));
 }
 
 async function getJson(url, key) {
