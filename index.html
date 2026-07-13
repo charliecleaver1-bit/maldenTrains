@@ -449,6 +449,7 @@ let state = {
   source: "demo",       // "live" | "demo"
   services: [],
   messages: [],         // National Rail disruption messages (Darwin)
+  failReason: null,     // why the live board fell back to demo, if it did
   updated: null,
   loading: false,
   expandedId: null,     // id of the train whose journey panel is open
@@ -482,13 +483,17 @@ async function fetchBoard(dir){
   const j = curJourney();
   try{
     const r = await fetch(`/api/board?from=${j.from}&to=${j.to}`, { headers:{accept:"application/json"} });
-    if(!r.ok) throw new Error("proxy "+r.status);
+    if(!r.ok) throw new Error("HTTP "+r.status);
     const data = await r.json();
-    if(!data || !Array.isArray(data.services)) throw new Error("shape");
+    if(!data || !Array.isArray(data.services)) throw new Error("bad shape");
+    if(data.error) throw new Error(data.error);
     state.messages = Array.isArray(data.messages) ? data.messages : [];
+    state.failReason = null;
     return { source:"live", services:data.services };
   }catch(e){
     state.messages = [];
+    state.failReason = String(e && e.message ? e.message : e);
+    console.error("Live board failed:", state.failReason);
     return { source:"demo", services:demoBoard(dir) };
   }
 }
@@ -642,7 +647,9 @@ function render(){
   document.getElementById("list-title").textContent = j.listTitle;
   document.getElementById("btn-out").setAttribute("aria-pressed", state.dir==="out");
   document.getElementById("btn-home").setAttribute("aria-pressed", state.dir==="home");
-  document.getElementById("src").textContent = state.source==="live" ? "live · RTT" : "demo data";
+  document.getElementById("src").textContent = state.source==="live"
+    ? "live · National Rail"
+    : (state.failReason ? `demo — ${state.failReason}` : "demo data");
   syncStationPicker();
 
   const all = normalise(state.services);
