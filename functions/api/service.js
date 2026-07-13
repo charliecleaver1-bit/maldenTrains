@@ -202,23 +202,19 @@ function buildProgress(d) {
 
   const raw = [...prev, here, ...next];
 
-  // Has the train ACTUALLY left the station this board is anchored at?
-  // Darwin publishes an actual time (atd/ata) once it genuinely happens.
-  const anchorLeft = !!clock(d.atd) || !!clock(d.ata);
+  // ARRIVING somewhere and DEPARTING it are different events. A train sitting
+  // at the platform has an actual arrival (ata) but NO actual departure (atd) —
+  // treating ata as "left" drags the marker a whole leg down the line.
+  const anchorArrived = !!clock(d.ata);
+  const anchorDeparted = !!clock(d.atd);
   const anchorIdx = prev.length;
   const nowMins = ukNowMins();
 
-  // "On time" means the estimate EQUALS the schedule — so resolve it to the
-  // scheduled clock time rather than discarding it.
+  // "On time" means the estimate EQUALS the schedule — resolve it, don't discard it.
   const estOf = (c) => clock(c.et) || (isOnTime(c.et) ? clock(c.st) : null);
 
-  // A stop is passed only if BOTH hold:
-  //   (a) evidence it happened — an actual time, or the train has left the
-  //       anchor and this stop lies behind it, and
-  //   (b) its best-known time has actually elapsed.
-  // Neither alone is enough: (a) without (b) jumps the train ahead of itself;
-  // (b) without (a) invents movement from the timetable.
-  const anchorPassed = !!clock(here.at) || (anchorLeft && elapsed(estOf(here), nowMins));
+  // Passed the anchor only with a real DEPARTURE, and only once its time is up.
+  const leftAnchor = anchorDeparted && elapsed(estOf(here) || clock(d.etd), nowMins);
 
   const stops = raw.map((c, i) => {
     const sched = clock(c.st);
@@ -226,17 +222,20 @@ function buildProgress(d) {
     const act = clock(c.at);
     const t = act || est || sched;
 
-    let departed;
-    if (act) {
-      departed = true;                                   // hard evidence
-    } else if (i < anchorIdx) {
-      departed = elapsed(est || sched, nowMins);         // behind us, but still check the clock
+    let departed, arrived;
+    if (i < anchorIdx) {
+      // Behind us on the route — still require the clock to agree.
+      departed = !!act || elapsed(est || sched, nowMins);
+      arrived = departed;
     } else if (i === anchorIdx) {
-      departed = anchorPassed;
-    } else if (!anchorPassed) {
-      departed = false;                                  // not past the anchor => nothing ahead is passed
+      departed = leftAnchor;
+      arrived = anchorArrived || anchorDeparted;   // at the platform counts as arrived
+    } else if (!leftAnchor) {
+      departed = false;                            // hasn't left the anchor yet
+      arrived = false;
     } else {
-      departed = elapsed(est || sched, nowMins);
+      departed = !!act || elapsed(est || sched, nowMins);
+      arrived = departed;
     }
 
     return {
@@ -246,7 +245,7 @@ function buildProgress(d) {
       arr: t,
       platform: c.platform || null,
       departed,
-      arrived: departed,
+      arrived,
       hasLiveTime: !!act || !!est,
       status: null,
       cancelled: !!c.isCancelled,
