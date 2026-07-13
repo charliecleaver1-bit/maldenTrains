@@ -64,19 +64,27 @@ function buildProgress(d) {
   };
 
   const raw = [...prev, here, ...next];
+
+  // Darwin only sometimes publishes an ACTUAL time (at). For most calling
+  // points you get a scheduled (st) and an estimated (et). So a stop counts as
+  // "departed" if Darwin gave an actual time OR its best-known time is already
+  // in the past — otherwise the train appears stuck at its origin.
+  const nowMins = ukNowMins();
+
   const stops = raw.map((c) => {
     const sched = clock(c.st);
     const est = clock(c.et);
     const act = clock(c.at);
     const t = act || est || sched;
+    const past = t !== null && minutesSince(t, nowMins) >= 0;
     return {
       name: c.name || c.locationName || "—",
       time: t,
       dep: t,
       arr: t,
       platform: c.platform || null,
-      departed: !!act,                              // Darwin gives an actual time once passed
-      arrived: !!act,
+      departed: !!act || past,
+      arrived: !!act || past,
       status: null,
       cancelled: !!c.isCancelled,
     };
@@ -103,6 +111,24 @@ function flatten(cp) {
 /* Darwin times are strings: "12:34" | "On time" | "Delayed" | "Cancelled". */
 function clock(v) {
   return (typeof v === "string" && /^\d{2}:\d{2}$/.test(v)) ? v : null;
+}
+
+/* Minutes past midnight, UK local time (Darwin publishes railway wall-clock). */
+function ukNowMins() {
+  const s = new Date().toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/London",
+  });
+  return (+s.slice(0, 2)) * 60 + (+s.slice(3, 5));
+}
+
+/* How many minutes ago was "HH:MM"? Negative = still to come.
+   Rolls over midnight so a 23:55 stop isn't treated as 23 hours in the future. */
+function minutesSince(t, nowMins) {
+  const m = (+t.slice(0, 2)) * 60 + (+t.slice(3, 5));
+  let d = nowMins - m;
+  if (d < -720) d += 1440;
+  if (d > 720) d -= 1440;
+  return d;
 }
 
 function json(body, status = 200, extra = {}) {
