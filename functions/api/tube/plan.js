@@ -115,7 +115,7 @@ export async function onRequestGet({ request, env }) {
         mins: Math.round(leg.duration || 0),
         direction: dir.direction,                   // "inbound" | "outbound" | null
         dirLabel: dir.label,                        // "Northbound" etc, when known
-        towards: (ro.directions && ro.directions[0]) || cleanName(arr.commonName),
+        towards: cleanName((ro.directions && ro.directions[0]) || arr.commonName),
       });
     }
     if (!legs.length) continue;                     // walking-only journey
@@ -146,7 +146,7 @@ async function resolveDirection(env, lineId, fromId, toId) {
       const a = ids.indexOf(base(fromId));
       const b = ids.indexOf(base(toId));
       if (a >= 0 && b >= 0 && a < b) {
-        return { direction, label: labelFor(lineId, direction), why: `${direction}: ${a} -> ${b}` };
+        return { direction, label: null, why: `${direction}: ${a} -> ${b}` };
       }
     }
   }
@@ -211,13 +211,11 @@ function base(id) {
   return String(id || "").trim();
 }
 
-/* A friendly direction word. TfL's own arrivals carry the authoritative
-   platform text, so this is only a fallback label. */
-function labelFor(lineId, direction) {
-  const NS = new Set(["northern", "victoria", "bakerloo", "piccadilly", "jubilee"]);
-  if (NS.has(lineId)) return direction === "inbound" ? "Southbound" : "Northbound";
-  return direction === "inbound" ? "Westbound" : "Eastbound";
-}
+/* No invented compass labels. A line's "inbound/outbound" doesn't map cleanly
+   onto north/south/east/west (the Jubilee runs west-to-east through Waterloo,
+   for instance), and guessing produced flatly wrong labels. TfL's arrivals
+   carry the real platform text ("Eastbound - Platform 3"), so we show that
+   instead and say nothing we can't back up. */
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 

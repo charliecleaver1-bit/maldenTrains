@@ -2063,6 +2063,18 @@ async function loadTubeArrivals(){
 }
 const CHANGE_MINS = 4;   // realistic platform-to-platform crossover
 
+/* The direction to show. TfL's arrivals carry the authoritative wording
+   ("Eastbound - Platform 3"), so use that when we have it rather than
+   inventing a compass bearing from the line's inbound/outbound flag. */
+function dirChip(l){
+  const a = (l._arrivals || [])[0];
+  const plat = a && a.platform ? String(a.platform) : null;
+  const compass = plat && plat.match(/(north|south|east|west)bound/i);
+  if(compass) return `<span class="dirchip">${esc(compass[0])}</span>`;
+  if(l.towards) return `<span class="dirchip">towards ${esc(l.towards)}</span>`;
+  return "";
+}
+
 /* Live minutes until the train reaches this platform. */
 function depLabel(mins){
   if(mins <= 0) return `due`;
@@ -2128,7 +2140,7 @@ function renderTubeCard(){
           <div class="tst">${esc(l.from)}</div>
           <div class="tvia">
             <span class="lchip"><span class="sw" style="background:${lineColour(l.line)}"></span>${esc(lineName(l.line))}</span>
-            ${l.dirLabel?`<span class="dirchip">${esc(l.dirLabel)}</span>`:""}
+            ${dirChip(l)}
             ${st && st.severity!=="ok" ? `<span class="warnchip ${st.severity}">${esc(st.status)}</span>` : ""}
           </div>
           <div class="tdet">${l.mins} min ride${l._unconfirmed?" · direction unconfirmed":""}</div>
