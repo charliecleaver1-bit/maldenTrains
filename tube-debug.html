@@ -90,6 +90,33 @@
     <pre id="s4">—</pre>
     <div class="hint">If <code>wrongWayDropped</code> is 0 and you expected trains both ways, the direction filter may not be working.</div>
   </div>
+  <div class="card">
+    <h2>5 · Station crowding</h2>
+    <p>Live busyness, as a fraction of the busiest that station has ever been (TfL recalculates every ~5 min).
+       A few stations have no data at all.</p>
+    <div class="row">
+      <input id="cstop" placeholder="stop id" value="940GZZLUOXC" />
+      <button onclick="go('/api/tube/crowding?stop='+cstop.value,'s5')">Run</button>
+      <button class="alt" onclick="go('/api/tube/crowding?debug=1&stop='+cstop.value,'s5')">Raw</button>
+    </div>
+    <pre id="s5">—</pre>
+    <div class="hint">If <code>available:false</code>, TfL has no crowding data for that station — we show nothing rather than guess.</div>
+  </div>
+
+  <div class="card">
+    <h2>6 · Follow a bus</h2>
+    <p>Where a specific vehicle is on its route. Get a <code>vehicle</code> registration from
+       <code>/api/busboard?stop=…</code> first. <b>Raw</b> shows TfL's per-vehicle predictions and the route sequence.</p>
+    <div class="row">
+      <input id="bveh" placeholder="vehicle reg e.g. LJ13CKA" />
+      <input id="bline" placeholder="line e.g. 131" value="131" />
+      <button onclick="go(`/api/busvehicle?vehicle=${bveh.value}&line=${bline.value}`,'s6')">Run</button>
+      <button class="alt" onclick="go(`/api/busvehicle?debug=1&vehicle=${bveh.value}&line=${bline.value}`,'s6')">Raw</button>
+    </div>
+    <pre id="s6">—</pre>
+    <div class="hint">A stop counts as <b>passed</b> when it drops out of TfL's prediction list for that vehicle —
+      real tracking, not a timetable comparison.</div>
+  </div>
 </div>
 
 <script>

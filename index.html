@@ -4,12 +4,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#0E5C54" />
-<title>My Travel — live departures</title>
+<title>Commuter — live departures</title>
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="apple-touch-icon" href="/icon-180.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="My Travel" />
+<meta name="apple-mobile-web-app-title" content="Commuter" />
 <meta name="mobile-web-app-capable" content="yes" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -75,6 +75,15 @@
     white-space:nowrap;pointer-events:none;letter-spacing:.3px;
   }
   .plat-tbc, .pl-tbc{color:var(--muted-2);}
+  .coaches{display:block;font-size:10px;color:var(--muted-2);margin-top:2px;font-family:var(--body);}
+  .reason{display:flex;gap:8px;align-items:flex-start;margin-top:10px;border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.45;}
+  .reason .r-ic{flex:none;width:15px;height:15px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;color:#fff;margin-top:1px;}
+  .reason.warn{background:rgba(181,115,11,.09);border:1px solid rgba(181,115,11,.26);color:#8A5709;}
+  .reason.warn .r-ic{background:var(--delay);}
+  .reason.bad{background:rgba(192,57,43,.07);border:1px solid rgba(192,57,43,.26);color:#96271C;}
+  .reason.bad .r-ic{background:var(--red);}
+  .reason.info{background:var(--surface-2);border:1px solid var(--line);color:var(--muted);}
+  .reason.info .r-ic{background:var(--muted-2);}
   .refresh-btn:hover{color:var(--text);border-color:var(--muted-2)}
   .refresh-btn.stale{color:var(--delay);border-color:rgba(181,115,11,.45);background:rgba(181,115,11,.07);}
   .refresh-btn.stale .refresh-ago{color:var(--delay);font-weight:600;}
@@ -344,6 +353,62 @@
   .srow-ls{display:flex;gap:3px;flex:none;}
   .srow-ls i{width:8px;height:8px;border-radius:50%;display:block;}
 
+  /* ---------- bus vehicle timeline ---------- */
+  .bus-item{background:var(--surface);border:1px solid var(--line);border-radius:13px;margin-bottom:7px;overflow:hidden;}
+  .bus-item .bus-row{border:0;border-radius:0;margin:0;background:transparent;}
+  .bus-row.tappable{cursor:pointer;}
+  .bchev{color:var(--muted-2);transition:transform .25s;flex:none;}
+  .bus-item.open .bchev{transform:rotate(180deg);}
+  .bsub .tracked{display:inline-flex;align-items:center;gap:4px;color:var(--green);font-weight:600;
+    font-size:10px;text-transform:uppercase;letter-spacing:.4px;}
+  .bsub .tracked i{width:6px;height:6px;border-radius:50%;background:currentColor;font-style:normal;}
+  .bus-panel{max-height:0;overflow:hidden;transition:max-height .32s ease;}
+  .bus-item.open .bus-panel{max-height:460px;border-top:1px solid var(--line);}
+  .bt-pad{padding:15px;}
+  .bt-msg{font-size:12.5px;color:var(--muted);}
+  .bt-cap{font-size:13px;font-weight:600;color:var(--bus);margin-bottom:3px;}
+  .bt-sub{font-size:11.5px;color:var(--muted);margin-bottom:14px;}
+  .bt-scroll{overflow-x:auto;padding-bottom:6px;scrollbar-width:none;}
+  .bt-scroll::-webkit-scrollbar{display:none;}
+  .bt-line{display:flex;min-width:max-content;padding:0 4px;}
+  .bt-st{width:100px;flex:none;text-align:center;}
+  .bt-t{font-family:var(--mono);font-size:11px;color:var(--muted-2);margin-bottom:7px;height:14px;}
+  .bt-bar{position:relative;height:16px;display:flex;align-items:center;justify-content:center;}
+  .bt-bar::before{content:"";position:absolute;left:0;right:50%;height:3px;background:var(--line);}
+  .bt-bar::after{content:"";position:absolute;left:50%;right:0;height:3px;background:var(--line);}
+  .bt-st:first-child .bt-bar::before,.bt-st:last-child .bt-bar::after{display:none;}
+  .bt-st.done .bt-bar::before,.bt-st.done .bt-bar::after{background:var(--bus);}
+  .bt-st.here .bt-bar::before{background:var(--bus);}
+  .bt-dot{width:11px;height:11px;border-radius:50%;background:var(--surface);border:2.5px solid var(--line);position:relative;z-index:2;}
+  .bt-st.done .bt-dot{background:var(--bus);border-color:var(--bus);}
+  .bt-st.here .bt-dot{background:var(--bus);border-color:var(--bus);box-shadow:0 0 0 5px rgba(193,95,60,.18);}
+  .bt-st.beyond .bt-dot{border-style:dashed;}
+  .bt-nm{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.25;}
+  .bt-st.here .bt-nm{color:var(--text);font-weight:600;}
+  .bt-st.beyond .bt-nm,.bt-st.beyond .bt-t{color:var(--muted-2);}
+  .bt-nm b{color:var(--bus);}
+  .bt-marker{position:absolute;top:-2px;left:50%;transform:translate(-50%,-100%);z-index:3;}
+  .bt-marker svg{display:block;filter:drop-shadow(0 2px 4px rgba(0,0,0,.18));}
+  .bt-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:10.5px;color:var(--muted);}
+  .bt-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .bt-sw{width:9px;height:9px;border-radius:50%;}
+  .bt-sw.done{background:var(--bus);}
+  .bt-sw.next{background:var(--surface);border:2px solid var(--line);}
+  .bt-sw.beyond{background:var(--surface);border:2px dashed var(--muted-2);}
+
+  /* ---------- tube crowding ---------- */
+  .crowd{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:20px;padding:2px 8px;
+    border:1px solid var(--line);background:var(--surface-2);color:var(--muted);}
+  .crowd .bars{display:inline-flex;gap:1.5px;align-items:flex-end;height:10px;}
+  .crowd .bars i{width:3px;border-radius:1px;background:currentColor;opacity:.28;}
+  .crowd .bars i:nth-child(1){height:4px} .crowd .bars i:nth-child(2){height:7px}
+  .crowd .bars i:nth-child(3){height:10px}
+  .crowd .bars i.on{opacity:1;}
+  .crowd.quiet{color:var(--green);border-color:rgba(18,124,86,.3);background:rgba(18,124,86,.07);}
+  .crowd.moderate{color:var(--muted);}
+  .crowd.busy{color:#8A5709;border-color:rgba(181,115,11,.3);background:rgba(181,115,11,.08);}
+  .crowd.packed{color:#96271C;border-color:rgba(192,57,43,.32);background:rgba(192,57,43,.08);}
+
   .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
   .station-lbl{font-size:12px;color:var(--muted);min-width:34px;}
   .station-wrap{position:relative;flex:1;}
@@ -474,7 +539,7 @@
       </svg>
     </div>
     <div class="brand">
-      <h1>My Travel</h1>
+      <h1>Commuter</h1>
       <p>Live departures · New Malden</p>
     </div>
     <div class="clock">
@@ -689,6 +754,8 @@ let state = {
   busData: null,        // last bus arrivals payload
   busSource: "demo",
   busEditIdx: null,     // stop being edited in the sheet (null = adding)
+  busOpenId: null,      // vehicle whose timeline is expanded
+  busTrack: null,       // that vehicle's live route
   tubeJourneys: [],     // [{name, from:{id,name}, to:{id,name}, lines:[]}]
   tubeIdx: 0,
   tubeEditIdx: null,
@@ -795,6 +862,26 @@ function isBoardable(s){
   const goesAt = s.etdMs || s.depMs;
   if(!goesAt) return true;
   return goesAt > Date.now() - 60000;
+}
+
+/* Why a train is late or cancelled, and any trouble Darwin already expects
+   further down the line. All straight from the feed — no inference. */
+function reasonBlock(s){
+  const out = [];
+  if(s.cancelReason){
+    out.push(`<div class="reason bad"><span class="r-ic">\u2715</span><span>${esc(s.cancelReason)}</span></div>`);
+  } else if(s.delayReason){
+    out.push(`<div class="reason warn"><span class="r-ic">!</span><span>${esc(s.delayReason)}</span></div>`);
+  }
+  if(s.futureCancellation && !s.cancelReason){
+    out.push(`<div class="reason bad"><span class="r-ic">\u2715</span><span>Expected to be cancelled later on its journey.</span></div>`);
+  } else if(s.futureDelay && !s.delayReason){
+    out.push(`<div class="reason warn"><span class="r-ic">!</span><span>Expected to be delayed later on its journey.</span></div>`);
+  }
+  if(s.detachFront){
+    out.push(`<div class="reason info"><span class="r-ic">\u2702</span><span>Front coaches detach en route \u2014 check before boarding.</span></div>`);
+  }
+  return out.join("");
 }
 
 /* Hide services that take over 40 minutes to reach the target station
@@ -942,7 +1029,8 @@ function render(){
             <div class="u">${next.status==="cancel"?"no service":"to go"}</div>
           </div>
         </div>
-        <div class="plat">${next.platform ? `Platform <b>${esc(next.platform)}</b> · ` : `<span class="plat-tbc">Platform TBC</span> · `}${esc(next.operator||"South Western Railway")}</div>
+        <div class="plat">${next.platform ? `Platform <b>${esc(next.platform)}</b> · ` : `<span class="plat-tbc">Platform TBC</span> · `}${esc(next.operator||"South Western Railway")}${next.coaches?` · <b>${next.coaches} coaches</b>`:""}</div>
+        ${reasonBlock(next)}
         ${showProg ? `
         <button class="progress-toggle" id="tog-${pkey}" aria-expanded="false" aria-label="Show stops and live position" onclick="toggleProgress('${pkey}')">
           <svg class="chev" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -973,7 +1061,7 @@ function render(){
         </div>
         <div class="right">
           <div class="cd">${cd}</div>
-          <div class="pl">${s.platform ? `Plat <b>${esc(s.platform)}</b>` : `<span class="pl-tbc">Plat —</span>`}</div>
+          <div class="pl">${s.platform ? `Plat <b>${esc(s.platform)}</b>` : `<span class="pl-tbc">Plat —</span>`}${s.coaches?`<span class="coaches">${s.coaches} car</span>`:""}</div>
         </div>
         ${canExpand?`<svg class="svc-chev chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>`:""}
         </div>
@@ -1907,20 +1995,92 @@ function renderBusBoard(){
   const board = document.getElementById("bus-board");
   const list = (state.busData||[]).filter(a => a.dueMs > Date.now()-60000);
   if(!list.length){ board.innerHTML = `<div class="empty">No buses due in the next hour.</div>`; return; }
-  board.innerHTML = list.map(a=>{
+
+  board.innerHTML = list.map((a,i)=>{
     const mins = Math.max(0, Math.round((a.dueMs - Date.now())/60000));
     const due = mins <= 0;
-    return `<div class="bus-row ${due?"due":""}">
-      <div class="bline">${esc(a.line)}</div>
-      <div class="bmid">
-        <div class="bdest">${esc(a.destination||"")}</div>
-        ${state.busSource==="demo"?`<div class="bsub">demo data</div>`:""}
+    const canTrack = !!a.vehicle && state.busSource === "live";
+    const open = state.busOpenId === a.vehicle;
+    return `<div class="bus-item ${open?"open":""}" id="bi-${i}">
+      <div class="bus-row ${due?"due":""} ${canTrack?"tappable":""}" ${canTrack?`onclick="toggleBusTrack('${esc(a.vehicle)}','${esc(a.lineId||a.line)}',${i})"`:""}>
+        <div class="bline">${esc(a.line)}</div>
+        <div class="bmid">
+          <div class="bdest">${esc(a.destination||"")}</div>
+          <div class="bsub">${
+            state.busSource==="demo" ? "demo data"
+            : canTrack ? `<span class="tracked"><i></i>Tracked</span> \u00b7 ${esc(a.vehicle)}`
+            : "not tracked"}</div>
+        </div>
+        <div class="bcount"><div class="n">${due?"due":mins}</div><div class="u">${due?"":"min"}</div></div>
+        ${canTrack?`<svg class="bchev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`:`<span style="width:15px"></span>`}
       </div>
-      <div class="bcount"><div class="n">${due?"due":mins}</div><div class="u">${due?"":"min"}</div></div>
+      <div class="bus-panel" id="bp-${i}">${open ? busTimeline() : ""}</div>
     </div>`;
   }).join("");
+
   const u = document.getElementById("updated");
-  u.textContent = state.updated ? `Updated ${hhmm(state.updated)} · ${state.busSource==="live"?"live · TfL":"demo data"}` : "—";
+  u.textContent = state.updated ? `Updated ${hhmm(state.updated)} \u00b7 ${state.busSource==="live"?"live \u00b7 TfL":"demo data"}` : "\u2014";
+}
+
+/* ---- following one bus down its route ---- */
+
+async function toggleBusTrack(vehicle, line, idx){
+  if(state.busOpenId === vehicle){
+    state.busOpenId = null; state.busTrack = null;
+    renderBusBoard();
+    return;
+  }
+  state.busOpenId = vehicle;
+  state.busTrack = { loading:true };
+  renderBusBoard();
+
+  const stop = curStop();
+  try{
+    const q = `/api/busvehicle?vehicle=${encodeURIComponent(vehicle)}&line=${encodeURIComponent(line)}` +
+              `&stop=${encodeURIComponent(stop ? stop.id : "")}&_=${Date.now()}`;
+    const r = await fetch(q, { headers:{accept:"application/json"}, cache:"no-store" });
+    const d = await r.json();
+    state.busTrack = (r.ok && d.tracked) ? d : { error: (d && d.reason) || "Couldn't track this bus." };
+  }catch(e){
+    state.busTrack = { error: "Couldn't reach the tracker." };
+  }
+  if(state.busOpenId === vehicle) renderBusBoard();
+}
+
+function busTimeline(){
+  const t = state.busTrack;
+  if(!t) return "";
+  if(t.loading) return `<div class="bt-pad"><div class="bt-msg">Finding this bus\u2026</div></div>`;
+  if(t.error)   return `<div class="bt-pad"><div class="bt-msg">${esc(t.error)}</div></div>`;
+
+  const stops = t.stops || [];
+  const cells = stops.map((s)=>{
+    const cls = s.passed ? "done" : (s.next ? "here" : (s.beyondWindow ? "beyond" : ""));
+    const marker = s.next ? `<span class="bt-marker">${busGlyph()}</span>` : "";
+    const time = s.eta || (s.beyondWindow ? "\u2014" : "");
+    return `<div class="bt-st ${cls}">
+      <div class="bt-t">${esc(time)}</div>
+      <div class="bt-bar">${marker}<span class="bt-dot"></span></div>
+      <div class="bt-nm">${esc(s.name||"")}${s.you?`<br><b>your stop</b>`:""}</div>
+    </div>`;
+  }).join("");
+
+  return `<div class="bt-pad">
+    <div class="bt-cap">${esc(t.caption||"")}</div>
+    <div class="bt-sub">${esc(t.line)} to ${esc(t.destination||"")} \u00b7 ${esc(t.vehicle)} \u00b7 times are live predictions</div>
+    <div class="bt-scroll"><div class="bt-line">${cells}</div></div>
+    <div class="bt-legend">
+      <span><i class="bt-sw done"></i>Passed</span>
+      <span><i class="bt-sw next"></i>Predicted</span>
+      <span><i class="bt-sw beyond"></i>Beyond live window</span>
+    </div>
+  </div>`;
+}
+
+function busGlyph(){
+  return `<svg viewBox="0 0 24 24" width="19" height="19" fill="var(--bus)" stroke="#fff" stroke-width="1.4" stroke-linejoin="round">
+    <rect x="4" y="4" width="16" height="13" rx="3"/><path d="M4 11h16" stroke-width="1.1"/>
+    <circle cx="8" cy="19" r="1.5" fill="#fff" stroke="none"/><circle cx="16" cy="19" r="1.5" fill="#fff" stroke="none"/></svg>`;
 }
 
 function tickBus(){
@@ -2111,9 +2271,38 @@ async function loadTubeArrivals(){
       console.error("Tube arrivals failed for", l.line, e);
       l._arrivals = [];
     }
+
+    // How busy is the station you're standing in?
+    try{
+      const c = await fetch(`/api/tube/crowding?stop=${encodeURIComponent(l.fromId)}`,
+        { headers:{accept:"application/json"} });
+      const cd = await c.json();
+      l._crowd = (c.ok && cd.available) ? cd : null;
+    }catch(e){ l._crowd = null; }
   }));
 
+  // …and the destination station too, so the last stop isn't a blank.
+  const last = legs[legs.length-1];
+  if(last && last.toId){
+    try{
+      const c = await fetch(`/api/tube/crowding?stop=${encodeURIComponent(last.toId)}`,
+        { headers:{accept:"application/json"} });
+      const cd = await c.json();
+      tubePlan._destCrowd = (c.ok && cd.available) ? cd : null;
+    }catch(e){ tubePlan._destCrowd = null; }
+  }
+
   renderTubeCard();
+}
+
+/* Crowding is TfL's live station busyness, expressed relative to the busiest
+   that station has ever been — so it's a comparison, not a head count. */
+function crowdChip(c){
+  if(!c || !c.level) return "";
+  const on = { quiet:1, moderate:2, busy:2, packed:3 }[c.level] || 1;
+  const bars = [1,2,3].map(n=>`<i class="${n<=on?"on":""}"></i>`).join("");
+  return `<span class="crowd ${c.level}" title="${c.percent}% of this station's busiest recorded level">
+    <span class="bars">${bars}</span>${esc(c.label)}</span>`;
 }
 const CHANGE_MINS = 4;   // realistic platform-to-platform crossover
 
@@ -2195,6 +2384,7 @@ function renderTubeCard(){
           <div class="tvia">
             <span class="lchip"><span class="sw" style="background:${lineColour(l.line)}"></span>${esc(lineName(l.line))}</span>
             ${dirChip(l)}
+            ${crowdChip(l._crowd)}
             ${st && st.severity!=="ok" ? `<span class="warnchip ${st.severity}">${esc(st.status)}</span>` : ""}
           </div>
           <div class="tdet">${l.mins} min ride${l._unconfirmed?" · direction unconfirmed":""}</div>
@@ -2208,6 +2398,7 @@ function renderTubeCard(){
       <div class="tleg">
         <div class="trail"><span class="tnode" style="border-color:var(--amber);background:var(--amber)"></span></div>
         <div class="tbody"><div class="tst">${esc(j.to.name)}</div>
+        ${tubePlan._destCrowd?`<div class="tvia">${crowdChip(tubePlan._destCrowd)}</div>`:""}
         <div class="tdet">Arrive ~${clockAt(total)} · ${total} min total</div></div>
       </div>`;
 

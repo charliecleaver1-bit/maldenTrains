@@ -22,10 +22,14 @@ export async function onRequestGet({ request, env }) {
   const arrivals = (Array.isArray(data) ? data : [])
     .map((a) => ({
       line: a.lineName || "",
+      lineId: a.lineId || "",
       destination: a.destinationName || a.towards || "",
       secs: typeof a.timeToStation === "number" ? a.timeToStation : 0,
       mins: Math.max(0, Math.round((a.timeToStation || 0) / 60)),
       expected: a.expectedArrival || null,
+      // The registration of the actual bus. Present for most services — it's
+      // what lets us follow this specific vehicle down the route.
+      vehicle: a.vehicleId && a.vehicleId !== "0" ? a.vehicleId : null,
     }))
     .filter((a) => a.line)
     .sort((a, b) => a.secs - b.secs)

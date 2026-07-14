@@ -1,6 +1,6 @@
 {
-  "name": "My Travel",
-  "short_name": "My Travel",
+  "name": "Commuter",
+  "short_name": "Commuter",
   "description": "Your live departures — rail and bus — for the journey home.",
   "start_url": "/",
   "scope": "/",

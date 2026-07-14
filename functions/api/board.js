@@ -123,9 +123,28 @@ function normalise(s, to) {
     operator: s.operator || "South Western Railway",
     isBus: s.serviceType && s.serviceType !== "train",
     isCircular: !!s.isCircularRoute,                // the Kingston-loop flag
-    delayReason: s.delayReason || null,
-    cancelReason: s.cancelReason || null,
+    delayReason: tidyReason(s.delayReason),
+    cancelReason: tidyReason(s.cancelReason),
+    coaches: coachCount(s.length),                  // formation length
+    detachFront: !!s.detachFront,                   // front portion splits off
+    reverseFormation: !!s.isReverseFormation,
+    futureDelay: !!s.futureDelay,                   // Darwin expects trouble later
+    futureCancellation: !!s.futureCancellation,
   };
+}
+
+/* Darwin sends length as a number or a numeric string; 0 means "unknown". */
+function coachCount(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/* Darwin's reasons are full sentences, often with trailing whitespace and the
+   odd double space. Keep the wording — just tidy it. */
+function tidyReason(r) {
+  if (!r) return null;
+  const s = String(r).replace(/\s+/g, " ").trim();
+  return s || null;
 }
 
 /* First usable clock value from actual > estimated > scheduled. */
