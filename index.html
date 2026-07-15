@@ -227,9 +227,13 @@
     font-family:var(--display);font-size:12.5px;font-weight:600;outline:none;width:140px;max-width:100%;}
   .jrn-pill.add{color:var(--amber);border-style:dashed;padding:8px 14px;flex:0 0 auto;}
 
-  .jrn-empty{background:var(--ink-2);border:1px dashed var(--line);border-radius:14px;padding:18px 15px;
-    margin-bottom:14px;font-size:13.5px;color:var(--muted);text-align:center;}
+  .jrn-empty{background:var(--ink-2);border:1px dashed var(--line);border-radius:14px;padding:20px 18px;
+    margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.6;}
   .jrn-empty b{color:var(--text);font-weight:600;}
+  .jrn-empty .empty-hd{font-family:var(--display);font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;}
+  .jrn-empty p{margin-bottom:8px;}
+  .jrn-empty p:last-child{margin-bottom:0;}
+  .jrn-empty .empty-tip{font-size:12px;color:var(--muted-2);padding-top:8px;border-top:1px solid var(--line);}
   .leg{display:flex;align-items:center;gap:12px;background:var(--ink-2);border:1px solid var(--line);
     border-radius:14px;padding:13px 15px;margin-bottom:14px;}
   .leg-route{flex:1;min-width:0;}
@@ -255,6 +259,14 @@
   .fld input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px;
     font-family:var(--body);font-size:16px;color:var(--text);outline:none;}
   .fld input:focus{border-color:var(--amber);}
+  .fld input.needs{border-color:var(--red);background:rgba(192,57,43,.05);
+    animation:nudge .4s cubic-bezier(.36,.07,.19,.97) 0s 2;}
+  @keyframes nudge{
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-5px)}
+    75%{transform:translateX(5px)}
+  }
+  .fld label .opt{font-weight:400;color:var(--muted-2);text-transform:none;letter-spacing:0;font-size:10.5px;margin-left:4px;}
   .st-results{display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:190px;overflow-y:auto;}
   .st-row{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:11px 13px;
     cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;}
@@ -409,6 +421,80 @@
   .crowd.busy{color:#8A5709;border-color:rgba(181,115,11,.3);background:rgba(181,115,11,.08);}
   .crowd.packed{color:#96271C;border-color:rgba(192,57,43,.32);background:rgba(192,57,43,.08);}
 
+  /* ---------- commute ---------- */
+  .mode-toggle.mode-4{grid-template-columns:repeat(4,1fr);}
+  .mode-toggle.mode-4 .mode-tab{font-size:12px;padding:10px 2px;}
+  .md-ic.commute{color:var(--teal);}
+
+  .cm-leg{display:grid;grid-template-columns:46px 1fr;}
+  .cm-gutter{position:relative;display:flex;flex-direction:column;align-items:center;padding-top:4px;}
+  .cm-step{width:26px;height:26px;border-radius:50%;background:var(--surface);border:2px solid var(--line);
+    display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:12px;color:var(--muted);z-index:2;flex:none;}
+  .cm-leg.rail .cm-step{border-color:var(--teal);color:var(--teal);}
+  .cm-leg.bus .cm-step{border-color:var(--bus);color:var(--bus);}
+  .cm-leg.tube .cm-step{border-color:var(--red);color:var(--red);}
+  .cm-leg.broken .cm-step{border-color:var(--muted-2);color:var(--muted-2);border-style:dashed;}
+  .cm-spine{width:3px;flex:1;background:var(--line);margin:3px 0;min-height:10px;}
+
+  .cm-card{background:var(--surface);border:1px solid var(--line);border-radius:15px;margin:0 0 12px;overflow:hidden;box-shadow:0 10px 26px -22px rgba(16,40,50,.3);}
+  .cm-hd{display:flex;align-items:center;gap:11px;padding:13px 14px;}
+  .cm-badge{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;flex:none;}
+  .cm-badge.rail{background:var(--teal);} .cm-badge.bus{background:var(--bus);} .cm-badge.tube{background:var(--red);}
+  .cm-badge.broken{background:var(--muted-2);}
+  .cm-main{flex:1;min-width:0;}
+  .cm-t{font-size:14px;font-weight:600;line-height:1.25;}
+  .cm-s{font-size:11.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .cm-tag{font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;font-weight:700;padding:2px 7px;border-radius:20px;flex:none;}
+  .cm-tag.rail{color:var(--teal);background:rgba(14,92,84,.08);}
+  .cm-tag.bus{color:var(--bus);background:rgba(193,95,60,.1);}
+  .cm-tag.tube{color:var(--red);background:rgba(192,57,43,.09);}
+  .cm-deps{border-top:1px solid var(--line);padding:2px 14px 8px;}
+  .cm-dep{display:flex;align-items:baseline;gap:11px;padding:8px 0;}
+  .cm-dep + .cm-dep{border-top:1px solid var(--line);}
+  .cm-dep .m{font-family:var(--display);font-size:16px;font-weight:700;min-width:54px;}
+  .cm-dep .m small{font-size:10px;color:var(--muted);font-weight:500;}
+  .cm-dep .m.due{color:var(--green);}
+  .cm-dep .d{flex:1;font-size:12.5px;color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cm-dep .p{font-family:var(--mono);font-size:11px;color:var(--muted-2);white-space:nowrap;}
+  .cm-loading,.cm-none{font-size:12px;color:var(--muted);padding:10px 14px;}
+
+  /* a leg whose saved journey has vanished */
+  .cm-broken{border-top:1px solid var(--line);padding:11px 14px;font-size:12px;color:#8A5709;
+    background:rgba(181,115,11,.06);display:flex;gap:8px;align-items:flex-start;}
+  .cm-broken b{color:var(--text);}
+  .cm-fix{margin-top:6px;display:inline-block;font-size:11.5px;color:var(--teal);font-weight:600;cursor:pointer;
+    background:none;border:0;padding:0;text-decoration:underline;}
+
+  /* sheet: chosen legs */
+  .chosen-legs{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:4px;}
+  .cl-row{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--surface);}
+  .cl-row + .cl-row{border-top:1px solid var(--line);}
+  .cl-n{width:22px;height:22px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;
+    font-family:var(--display);font-weight:700;font-size:11px;color:var(--muted);flex:none;}
+  .cl-bd{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;flex:none;}
+  .cl-bd.rail{background:var(--teal);}.cl-bd.bus{background:var(--bus);}.cl-bd.tube{background:var(--red);}.cl-bd.broken{background:var(--muted-2);}
+  .cl-t{flex:1;min-width:0;font-size:13.5px;font-weight:600;}
+  .cl-t span{display:block;font-size:11px;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cl-t.broken{color:#8A5709;}
+  .cl-move{border:0;background:transparent;color:var(--muted-2);cursor:pointer;font-size:13px;padding:2px 4px;}
+  .cl-move:disabled{opacity:.25;cursor:default;}
+  .cl-x{border:0;background:transparent;color:var(--muted-2);font-size:18px;cursor:pointer;padding:2px 6px;}
+  .chosen-empty{padding:18px;text-align:center;color:var(--muted-2);font-size:12.5px;}
+
+  /* sheet: grouped picker */
+  .cpick-group{margin-bottom:14px;}
+  .cpick-head{display:flex;align-items:center;gap:8px;margin:0 2px 8px;}
+  .cpick-head .gi{width:20px;height:20px;border-radius:6px;display:grid;place-items:center;flex:none;}
+  .cpick-head .gi.rail{background:var(--teal);}.cpick-head .gi.bus{background:var(--bus);}.cpick-head .gi.tube{background:var(--red);}
+  .cpick-head .gt{font-family:var(--display);font-weight:600;font-size:13px;}
+  .cpick-head .gc{font-size:11px;color:var(--muted-2);}
+  .cpick-opts{display:flex;flex-wrap:wrap;gap:7px;}
+  .cpick-opt{border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:9px 13px;font-size:13px;
+    font-weight:600;cursor:pointer;color:var(--text);display:inline-flex;flex-direction:column;gap:1px;text-align:left;max-width:100%;}
+  .cpick-opt span{font-size:10.5px;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;}
+  .cpick-opt:hover{border-color:var(--teal);}
+  .cpick-none{font-size:12px;color:var(--muted-2);padding:2px 2px 0;font-style:italic;}
+
   .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
   .station-lbl{font-size:12px;color:var(--muted);min-width:34px;}
   .station-wrap{position:relative;flex:1;}
@@ -557,10 +643,11 @@
     </button>
   </header>
 
-  <div class="mode-toggle mode-3" role="tablist" aria-label="Mode">
+  <div class="mode-toggle mode-4" role="tablist" aria-label="Mode">
     <button id="mode-rail" class="mode-tab" role="tab" aria-selected="true" onclick="setMode('rail')"><span class="md-ic rail">▬</span>Rail</button>
     <button id="mode-bus" class="mode-tab" role="tab" aria-selected="false" onclick="setMode('bus')"><span class="md-ic bus">▬</span>Bus</button>
     <button id="mode-tube" class="mode-tab" role="tab" aria-selected="false" onclick="setMode('tube')"><span class="md-ic tube">▬</span>Tube</button>
+    <button id="mode-commute" class="mode-tab" role="tab" aria-selected="false" onclick="setMode('commute')"><span class="md-ic commute">◆</span>Commute</button>
   </div>
 
   <div id="rail-view">
@@ -578,7 +665,11 @@
   </div>
 
   <div class="jrn-empty" id="jrn-empty" hidden>
-    No journeys saved. Tap <b>&#xFF0B; Add journey</b> to set one up.
+    <div class="empty-hd">Add your first journey</div>
+    <p>Tap <b>&#xFF0B; Add journey</b>, pick the station you start from and the one you're heading to,
+    then give it a name like <b>Work</b> or <b>Home</b>.</p>
+    <p class="empty-tip">Saved journeys appear as buttons up here, so you can flick between them.
+    Use <b>&#x21C4;</b> to reverse one for the trip back.</p>
   </div>
 
   <div class="alert" id="alert" role="status">
@@ -599,7 +690,9 @@
     <div class="jrn-switch" id="stop-switch"></div>
 
     <div class="jrn-empty" id="bus-empty" hidden>
-      No bus stops saved. Tap <b>&#xFF0B; Add stop</b> to find one near you.
+      <div class="empty-hd">Add your first bus stop</div>
+      <p>Tap <b>&#xFF0B; Add stop</b> and we'll find the stops near you — or search by postcode.
+      Name it something like <b>Home</b> and it'll be waiting next time.</p>
     </div>
 
     <div id="bus-board-wrap" hidden>
@@ -629,7 +722,9 @@
     <div class="jrn-switch" id="tube-switch"></div>
 
     <div class="jrn-empty" id="tube-empty" hidden>
-      No tube journeys yet. Tap <b>&#xFF0B; Add journey</b> and we'll work out the lines for you.
+      <div class="empty-hd">Add your first tube journey</div>
+      <p>Tap <b>&#xFF0B; Add journey</b> and pick two stations — we'll work out which line(s) to take,
+      including any changes, and show live trains for each leg.</p>
     </div>
 
     <div class="alert" id="tube-alert" role="status">
@@ -638,6 +733,21 @@
 
     <div id="tube-card"></div>
   </div><!-- /tube-view -->
+
+  <div id="commute-view" hidden>
+    <div class="lbl-cap">Your commutes</div>
+    <div class="jrn-switch" id="commute-switch"></div>
+
+    <div class="jrn-empty" id="commute-empty" hidden>
+      <div class="empty-hd">Chain your journeys into a commute</div>
+      <p>A commute stacks the journeys you've already saved — rail, bus and tube — into one screen,
+      in the order you travel them. Each leg shows its own live departures.</p>
+      <p class="empty-tip">First save the individual legs in the <b>Rail</b>, <b>Bus</b> and <b>Tube</b> tabs,
+      then tap <b>&#xFF0B; Add commute</b> to pick them by name.</p>
+    </div>
+
+    <div id="commute-stage"></div>
+  </div><!-- /commute-view -->
 
   <footer class="foot">
     <span id="updated">—</span>
@@ -689,6 +799,28 @@
   <button class="sheet-cancel" onclick="closeTubeSheet()">Cancel</button>
 </div>
 
+<div class="scrim" id="cscrim" onclick="closeCommuteSheet()"></div>
+<div class="sheet" id="csheet" role="dialog" aria-label="Build a commute">
+  <div class="grab"></div>
+  <h2 id="csheet-title">Build a commute</h2>
+  <p class="sheet-hint">Pick from the journeys you've already saved, in the order you travel them.</p>
+
+  <div class="fld">
+    <label>Name this commute</label>
+    <input id="cname" placeholder="e.g. Work — morning" maxlength="24" autocomplete="off" oninput="checkCommute()" />
+  </div>
+
+  <div class="lbl-cap">Your commute so far</div>
+  <div class="chosen-legs" id="chosen-legs"></div>
+
+  <div class="lbl-cap" style="margin-top:16px">Add a leg — tap to append</div>
+  <div id="commute-picker"></div>
+
+  <button class="sheet-save" id="csave" onclick="saveCommute()">Save commute</button>
+  <button class="sheet-delete" id="cdelete" hidden onclick="deleteCommute()">Delete this commute</button>
+  <button class="sheet-cancel" onclick="closeCommuteSheet()">Cancel</button>
+</div>
+
 <div class="scrim" id="bscrim" onclick="closeBusSheet()"></div>
 <div class="sheet" id="bsheet" role="dialog" aria-label="Add a bus stop">
   <div class="grab"></div>
@@ -713,7 +845,7 @@
   <div id="b-picked-wrap" hidden>
     <div class="fld"><label>Stop</label><div id="b-picked"></div></div>
     <div class="fld">
-      <label>Name this stop</label>
+      <label>Name this stop <span class="opt">optional</span></label>
       <input id="bname" placeholder="e.g. Home" maxlength="24" autocomplete="off" />
     </div>
   </div>
@@ -732,14 +864,12 @@
    come from the bundled UK station list (stations.js).
    ============================================================ */
 
-/* Journeys the app starts with, until the user saves their own. */
-const DEFAULT_JOURNEYS = [
-  { name:"Commute", from:"NEM", to:"WAT" },
-];
+/* No default journey — a new user shouldn't inherit someone else's commute. */
+const DEFAULT_JOURNEYS = [];
 
 let state = {
   mode: "rail",         // "rail" | "bus"
-  journeys: DEFAULT_JOURNEYS.slice(),
+  journeys: DEFAULT_JOURNEYS.slice(),   // empty until the user adds one
   jrnIdx: 0,            // which saved journey is showing
   jrnEditIdx: null,     // journey being edited in the sheet (null = adding)
   source: "demo",       // "live" | "demo"
@@ -756,9 +886,12 @@ let state = {
   busEditIdx: null,     // stop being edited in the sheet (null = adding)
   busOpenId: null,      // vehicle whose timeline is expanded
   busTrack: null,       // that vehicle's live route
-  tubeJourneys: [],     // [{name, from:{id,name}, to:{id,name}, lines:[]}]
+  tubeJourneys: [],     // [{jid, name, from:{id,name}, to:{id,name}, lines:[]}]
   tubeIdx: 0,
   tubeEditIdx: null,
+  commutes: [],         // [{name, legs:[{mode, jid}]}]  — jid points at a saved journey
+  commuteIdx: 0,
+  commuteEditIdx: null,
 };
 
 /* The journey currently being shown. */
@@ -1412,6 +1545,8 @@ async function refresh(manual){
   } else if(state.mode === "tube"){
     await loadTubeStatus();
     if(curTube()) await loadTubeJourney();
+  } else if(state.mode === "commute"){
+    renderCommute();          // each leg fetches its own live times
   } else {
     if(state.services.length===0) showSkeleton();
     const res = await fetchBoard();
@@ -1435,6 +1570,31 @@ function showSkeleton(){
   const b=document.getElementById("board"); b.className="board skeleton";
   b.innerHTML = Array.from({length:4}).map(()=>`<div class="svc"></div>`).join("");
   setTimeout(()=>{document.getElementById("board").className="board";},1200);
+}
+
+/* Stable ids so a commute can reference a saved journey even after the user
+   reorders or renames their journeys. Referencing by array index would break
+   the moment the list changes. */
+function newId(prefix){
+  return prefix + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+/* Older saved journeys predate ids — give them one on load, once. */
+function backfillIds(arr, prefix){
+  let changed = false;
+  (arr||[]).forEach(j=>{ if(j && !j.jid){ j.jid = newId(prefix); changed = true; } });
+  return changed;
+}
+
+/* A missing name used to just leave the Save button dead, which tells the user
+   nothing. Let them press it, then make the empty field impossible to miss. */
+function flagMissing(inputId){
+  const el = document.getElementById(inputId);
+  if(!el) return;
+  el.classList.remove("needs");
+  void el.offsetWidth;            // restart the animation
+  el.classList.add("needs");
+  el.focus();
+  setTimeout(()=>el.classList.remove("needs"), 1600);
 }
 
 /* ---- saved journeys: switch, swap, rename, add, remove ---- */
@@ -1576,8 +1736,9 @@ function choosePick(which, crs){
 }
 
 function checkJourney(){
-  const nm = document.getElementById("jname");
-  const ok = jrnPick.from && jrnPick.to && jrnPick.from.c !== jrnPick.to.c && nm && nm.value.trim();
+  // The button stays live once both stations are picked — the name is checked
+  // on submit so we can actually SAY what's missing.
+  const ok = jrnPick.from && jrnPick.to && jrnPick.from.c !== jrnPick.to.c;
   const btn = document.getElementById("jsave");
   if(btn) btn.disabled = !ok;
   // Picking a new pair invalidates any previous check.
@@ -1609,7 +1770,12 @@ async function verifyDirect(from, to){
 
 async function saveJourney(){
   const nm = document.getElementById("jname");
-  if(!jrnPick.from || !jrnPick.to || !nm.value.trim()) return;
+  if(!jrnPick.from || !jrnPick.to) return;
+  if(!nm.value.trim()){
+    setJourneyNote("Give this journey a name so you can find it later.", "warn");
+    flagMissing("jname");
+    return;
+  }
   const from = jrnPick.from.c, to = jrnPick.to.c;
 
   // Verify once. A second press after a failed check means "add it anyway".
@@ -1638,10 +1804,11 @@ async function saveJourney(){
 
   const name = nm.value.trim().slice(0,20);
   if(state.jrnEditIdx !== null && state.journeys[state.jrnEditIdx]){
-    state.journeys[state.jrnEditIdx] = { name, from, to };   // update in place
+    const jid = state.journeys[state.jrnEditIdx].jid || newId("rail");
+    state.journeys[state.jrnEditIdx] = { jid, name, from, to };   // update in place
     state.jrnIdx = state.jrnEditIdx;
   } else {
-    state.journeys.push({ name, from, to });
+    state.journeys.push({ jid:newId("rail"), name, from, to });
     state.jrnIdx = state.journeys.length - 1;
   }
   state.jrnEditIdx = null;
@@ -1703,6 +1870,7 @@ function tick(){
   }
 
   if(state.mode === "bus"){ tickBus(); return; }
+  if(state.mode === "commute"){ return; }   // legs carry their own live times
 
   // update hero countdown cheaply without full re-render
   const all = visibleServices(normalise(state.services));
@@ -1741,13 +1909,15 @@ function setMode(m){
 }
 
 function applyMode(){
-  const m = state.mode;                       // "rail" | "bus" | "tube"
+  const m = state.mode;                       // "rail" | "bus" | "tube" | "commute"
   document.getElementById("rail-view").hidden = m !== "rail";
   document.getElementById("bus-view").hidden  = m !== "bus";
   document.getElementById("tube-view").hidden = m !== "tube";
+  document.getElementById("commute-view").hidden = m !== "commute";
   document.getElementById("mode-rail").setAttribute("aria-selected", String(m==="rail"));
   document.getElementById("mode-bus").setAttribute("aria-selected", String(m==="bus"));
   document.getElementById("mode-tube").setAttribute("aria-selected", String(m==="tube"));
+  document.getElementById("mode-commute").setAttribute("aria-selected", String(m==="commute"));
 
   if(m === "bus"){
     renderSwitcher();
@@ -1757,6 +1927,10 @@ function applyMode(){
     renderTubePills();
     loadTubeStatus();
     if(curTube() && !tubePlan) loadTubeJourney(); else renderTubeCard();
+  }
+  if(m === "commute"){
+    renderCommutePills();
+    renderCommute();
   }
 }
 
@@ -1939,7 +2113,8 @@ function checkBus(){
 function saveBusStop(){
   if(!busPick) return;
   const label = (document.getElementById("bname").value || "").trim().slice(0,24);
-  const entry = { ...busPick, label: label || null };
+  const existing = (state.busEditIdx !== null && state.busStops[state.busEditIdx]) ? state.busStops[state.busEditIdx].jid : null;
+  const entry = { ...busPick, label: label || null, jid: existing || newId("bus") };
 
   if(state.busEditIdx !== null && state.busStops[state.busEditIdx]){
     state.busStops[state.busEditIdx] = entry;
@@ -2526,16 +2701,17 @@ function paintTubeRoutes(){
 function pickTubeRoute(i){ tubeChosen = i; paintTubeRoutes(); }
 
 function checkTube(){
-  const nm = document.getElementById("tjname");
-  const ok = tubePick.from && tubePick.to && tubeRoutes.length && tubeChosen !== null && nm && nm.value.trim();
+  const ok = tubePick.from && tubePick.to && tubeRoutes.length && tubeChosen !== null;
   document.getElementById("tjsave").disabled = !ok;
 }
 
 function saveTubeJourney(){
   const nm = document.getElementById("tjname");
   if(!tubePick.from || !tubePick.to || tubeChosen === null) return;
+  if(!nm.value.trim()){ flagMissing("tjname"); return; }
   const r = tubeRoutes[tubeChosen];
   const entry = {
+    jid: (state.tubeEditIdx !== null && state.tubeJourneys[state.tubeEditIdx] && state.tubeJourneys[state.tubeEditIdx].jid) || newId("tube"),
     name: nm.value.trim().slice(0,20),
     from: tubePick.from,
     to: tubePick.to,
@@ -2571,6 +2747,319 @@ function deleteTubeJourney(){
   if(state.tubeJourneys.length) loadTubeJourney(); else renderTubeCard();
 }
 
+
+/* ============================================================
+   COMMUTE
+   A commute is an ordered list of legs, each referencing a saved
+   journey (by its stable jid) in the Rail, Bus or Tube tab. Nothing
+   is created here — you assemble from what you've already saved.
+   Each leg shows its OWN live departures, independently. No offsets,
+   no changeover estimates, no running clock.
+   ============================================================ */
+
+function curCommute(){ return state.commutes[state.commuteIdx] || null; }
+
+/* Resolve a leg's jid back to the live saved journey. Returns null if the
+   user has since deleted it — which the UI then flags rather than hiding. */
+function resolveLeg(leg){
+  if(leg.mode === "rail")  return (state.journeys   || []).find(j=>j.jid===leg.jid) || null;
+  if(leg.mode === "tube")  return (state.tubeJourneys|| []).find(j=>j.jid===leg.jid) || null;
+  if(leg.mode === "bus")   return (state.busStops    || []).find(j=>j.jid===leg.jid) || null;
+  return null;
+}
+
+function renderCommutePills(){
+  const el = document.getElementById("commute-switch");
+  if(!el) return;
+  const pills = state.commutes.map((c,i)=>{
+    const dots = (c.legs||[]).map(l=>{
+      const col = l.mode==="rail"?"var(--teal)":l.mode==="bus"?"var(--bus)":"var(--red)";
+      return `<span class="ldot" style="background:${col}"></span>`;
+    }).join("");
+    return `<span class="jrn-wrap">
+      <button class="jrn-pill" role="tab" aria-selected="${i===state.commuteIdx}" onclick="setCommute(${i})">
+        ${dots?`<span class="ldots">${dots}</span>`:""}${esc(c.name)}</button>
+      <button class="jrn-pencil" aria-label="Edit commute" title="Edit" onclick="openCommuteSheet(${i},event)">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      </button></span>`;
+  }).join("");
+  el.innerHTML = pills + `<button class="jrn-pill add" onclick="openCommuteSheet()">\uFF0B Add commute</button>`;
+  document.getElementById("commute-empty").hidden = state.commutes.length > 0;
+}
+
+function setCommute(i){
+  if(!state.commutes[i]) return;
+  state.commuteIdx = i;
+  saveLocal("commuteidx", i);
+  renderCommutePills();
+  renderCommute();
+}
+
+/* Render the stack, then fetch each leg's live departures independently. */
+function renderCommute(){
+  const stage = document.getElementById("commute-stage");
+  if(!stage) return;
+  const c = curCommute();
+  if(!c){ stage.innerHTML = ""; return; }
+  if(!c.legs.length){
+    stage.innerHTML = `<div class="jrn-empty"><div class="empty-hd">Nothing in this commute yet</div>
+      <p>Tap the pencil on its pill to add saved journeys.</p></div>`;
+    return;
+  }
+
+  stage.innerHTML = `<div class="cm-chain">` + c.legs.map((leg,i)=>{
+    const j = resolveLeg(leg);
+    const last = i===c.legs.length-1;
+    const num = i+1;
+
+    if(!j){
+      // Option (a): the saved journey is gone — say so, don't vanish.
+      return `<div class="cm-leg broken">
+        <div class="cm-gutter"><div class="cm-step">${num}</div>${!last?'<div class="cm-spine"></div>':''}</div>
+        <div class="cm-card">
+          <div class="cm-hd">
+            <span class="cm-badge broken">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+            </span>
+            <span class="cm-main"><span class="cm-t">${esc(cap(leg.mode))} leg no longer saved</span>
+              <span class="cm-s">The ${esc(leg.mode)} journey this pointed to was deleted.</span></span>
+            <span class="cm-tag ${leg.mode}">${esc(leg.mode)}</span>
+          </div>
+          <div class="cm-broken">
+            <span>Remove it, or re-add the ${esc(leg.mode)} journey in its tab.
+            <button class="cm-fix" onclick="openCommuteSheet(${state.commuteIdx},event)">Edit commute</button></span>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    const col = leg.mode==="rail"?"teal":leg.mode==="bus"?"bus":"tube";
+    const title = leg.mode==="bus" ? esc(j.label || j.name)
+      : `${esc(nmeOf(j,"from"))} \u2192 ${esc(nmeOf(j,"to"))}`;
+    const sub = leg.mode==="bus" ? esc(busSub(j))
+      : leg.mode==="rail" ? "Rail"
+      : `Tube${(j.lines&&j.lines.length)?" \u00b7 "+j.lines.map(tubeLineName).join(", "):""}`;
+
+    return `<div class="cm-leg ${leg.mode}">
+      <div class="cm-gutter"><div class="cm-step">${num}</div>${!last?'<div class="cm-spine"></div>':''}</div>
+      <div class="cm-card" id="cm-card-${i}">
+        <div class="cm-hd">
+          <span class="cm-badge ${leg.mode}">${commuteIcon(leg.mode)}</span>
+          <span class="cm-main">
+            <span class="cm-t">${title}</span>
+            <span class="cm-s">${esc(j.name || j.label || "")} \u00b7 ${sub}</span>
+          </span>
+          <span class="cm-tag ${leg.mode}">${esc(leg.mode)}</span>
+        </div>
+        <div class="cm-deps" id="cm-deps-${i}"><div class="cm-loading">Loading live times\u2026</div></div>
+      </div>
+    </div>`;
+  }).join("") + `</div>`;
+
+  // fetch each leg's live departures
+  c.legs.forEach((leg,i)=>{
+    const j = resolveLeg(leg);
+    if(j) loadCommuteLeg(leg, j, i);
+  });
+}
+
+function nmeOf(j, end){
+  const v = j[end];
+  if(!v) return "";
+  return v.n || v.name || v.c || v.id || "";   // rail uses {c,n}, tube {id,name}
+}
+function busSub(j){
+  const bits = [];
+  if(j.label && j.name && j.label!==j.name) bits.push(j.name);
+  if(j.toward) bits.push("towards "+j.toward);
+  if(j.letter) bits.push("Stop "+j.letter);
+  return bits.join(" \u00b7 ");
+}
+function cap(s){ return s ? s[0].toUpperCase()+s.slice(1) : s; }
+function commuteIcon(mode){
+  if(mode==="rail") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="12" height="12" rx="2"/><path d="M6 11h12M9 20l-2 2M15 20l2 2"/></svg>`;
+  if(mode==="bus") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="12" rx="2"/><path d="M5 11h14M8 20l-1 1M16 20l1 1"/></svg>`;
+  return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M4 12h16" stroke-linecap="round"/></svg>`;
+}
+function tubeLineName(id){ return (typeof TUBE_LINES!=="undefined" && TUBE_LINES[id]) ? TUBE_LINES[id].n : id; }
+
+/* Each leg fetches independently — same endpoints the tabs use. */
+async function loadCommuteLeg(leg, j, idx){
+  const box = document.getElementById(`cm-deps-${idx}`);
+  if(!box) return;
+  try{
+    let rows = [];
+    if(leg.mode === "rail"){
+      const r = await fetch(`/api/board?from=${j.from.c}&to=${j.to.c}&_=${Date.now()}`, {headers:{accept:"application/json"},cache:"no-store"});
+      const d = await r.json();
+      rows = (d.services||[]).filter(s=>!s.departed).slice(0,2).map(s=>({
+        m: minsUntil(s.std, s.etd), d: `${esc(shortName(j.to))} \u00b7 ${s.etd&&s.etd!=="On time"?esc(s.etd):"on time"}`,
+        p: s.platform?`Plat ${esc(s.platform)}`:""
+      }));
+    } else if(leg.mode === "bus"){
+      const r = await fetch(`/api/busboard?stop=${encodeURIComponent(j.id)}&_=${Date.now()}`, {headers:{accept:"application/json"},cache:"no-store"});
+      const d = await r.json();
+      rows = (d.arrivals||[]).slice(0,2).map(a=>({
+        m: a.mins, d: `${esc(a.line)} \u00b7 ${esc(a.destination||"")}`, p: ""
+      }));
+    } else if(leg.mode === "tube"){
+      // re-plan to get the first leg's line + station, then its arrivals
+      const p = await fetch(`/api/tube/plan?from=${encodeURIComponent(j.from.id)}&to=${encodeURIComponent(j.to.id)}&_=${Date.now()}`, {headers:{accept:"application/json"},cache:"no-store"});
+      const pd = await p.json();
+      const first = pd.options && pd.options[0] && pd.options[0].legs[0];
+      if(first){
+        const b = await fetch(`/api/tube/board?line=${encodeURIComponent(first.line)}&stop=${encodeURIComponent(first.fromId)}&direction=${encodeURIComponent(first.direction||"")}&after=0&_=${Date.now()}`, {headers:{accept:"application/json"},cache:"no-store"});
+        const bd = await b.json();
+        rows = (bd.arrivals||[]).slice(0,2).map(a=>({
+          m: a.mins, d: `${tubeLineName(first.line)} \u00b7 ${esc(a.towards||first.towards||"")}`, p: a.platform?esc(a.platform):""
+        }));
+      }
+    }
+    box.innerHTML = rows.length
+      ? rows.map(x=>`<div class="cm-dep"><span class="m ${x.m<=0?"due":""}">${x.m<=0?"due":x.m}${x.m>0?"<small> min</small>":""}</span><span class="d">${x.d}</span><span class="p">${x.p}</span></div>`).join("")
+      : `<div class="cm-none">No live departures right now.</div>`;
+  }catch(e){
+    box.innerHTML = `<div class="cm-none">Couldn't load live times.</div>`;
+  }
+}
+
+function minsUntil(std, etd){
+  const t = (etd && /^\d\d:\d\d$/.test(etd)) ? etd : std;
+  if(!/^\d\d:\d\d$/.test(t||"")) return 0;
+  const [h,m] = t.split(":").map(Number);
+  const now = new Date();
+  const dep = new Date(now); dep.setHours(h,m,0,0);
+  if(dep < now - 60000) dep.setDate(dep.getDate()+1);
+  return Math.max(0, Math.round((dep-now)/60000));
+}
+
+/* ---------- build / edit sheet ---------- */
+let commuteDraft = [];   // [{mode, jid}]
+
+function openCommuteSheet(i, ev){
+  if(ev) ev.stopPropagation();
+  const editing = (typeof i === "number" && state.commutes[i]);
+  state.commuteEditIdx = editing ? i : null;
+  const c = editing ? state.commutes[i] : null;
+
+  commuteDraft = c ? c.legs.map(l=>({...l})) : [];
+  document.getElementById("csheet-title").textContent = editing ? "Edit commute" : "Build a commute";
+  document.getElementById("cname").value = c ? c.name : "";
+  document.getElementById("cdelete").hidden = !editing;
+
+  renderChosenLegs();
+  renderCommutePicker();
+  checkCommute();
+
+  document.getElementById("cscrim").classList.add("open");
+  document.getElementById("csheet").classList.add("open");
+}
+function closeCommuteSheet(){
+  document.getElementById("cscrim").classList.remove("open");
+  document.getElementById("csheet").classList.remove("open");
+}
+
+function renderChosenLegs(){
+  const el = document.getElementById("chosen-legs");
+  if(!commuteDraft.length){
+    el.innerHTML = `<div class="chosen-empty">Nothing added yet \u2014 pick from your saved journeys below.</div>`;
+    return;
+  }
+  el.innerHTML = commuteDraft.map((leg,i)=>{
+    const j = resolveLeg(leg);
+    const broken = !j;
+    const title = broken ? `${cap(leg.mode)} journey (deleted)`
+      : leg.mode==="bus" ? esc(j.label||j.name)
+      : `${esc(nmeOf(j,"from"))} \u2192 ${esc(nmeOf(j,"to"))}`;
+    const name = broken ? "no longer saved" : esc(j.name||j.label||"");
+    const first = i===0, lastOne = i===commuteDraft.length-1;
+    return `<div class="cl-row">
+      <span class="cl-n">${i+1}</span>
+      <span class="cl-bd ${broken?"broken":leg.mode}">${broken?"!":commuteIcon(leg.mode)}</span>
+      <span class="cl-t ${broken?"broken":""}">${title}<span>${name}</span></span>
+      <button class="cl-move" onclick="moveLeg(${i},-1)" ${first?"disabled":""} title="Up">\u2191</button>
+      <button class="cl-move" onclick="moveLeg(${i},1)" ${lastOne?"disabled":""} title="Down">\u2193</button>
+      <button class="cl-x" onclick="dropLeg(${i})" title="Remove">\u00d7</button>
+    </div>`;
+  }).join("");
+}
+function moveLeg(i, dir){
+  const j = i+dir;
+  if(j<0 || j>=commuteDraft.length) return;
+  [commuteDraft[i], commuteDraft[j]] = [commuteDraft[j], commuteDraft[i]];
+  renderChosenLegs();
+}
+function dropLeg(i){ commuteDraft.splice(i,1); renderChosenLegs(); renderCommutePicker(); checkCommute(); }
+
+function renderCommutePicker(){
+  const groups = [
+    ["rail","Rail journeys", state.journeys],
+    ["bus","Bus stops", state.busStops],
+    ["tube","Tube journeys", state.tubeJourneys],
+  ];
+  document.getElementById("commute-picker").innerHTML = groups.map(([mode,label,items])=>{
+    const opts = (items&&items.length) ? items.map(j=>{
+      const already = commuteDraft.some(d=>d.mode===mode && d.jid===j.jid);
+      const sub = mode==="bus" ? esc(j.label&&j.name&&j.label!==j.name ? j.name : (j.toward?("towards "+j.toward):""))
+        : `${esc(nmeOf(j,"from"))} \u2192 ${esc(nmeOf(j,"to"))}`;
+      const disp = mode==="bus" ? esc(j.label||j.name) : esc(j.name);
+      return `<button class="cpick-opt" ${already?"disabled style='opacity:.45'":`onclick="addCommuteLeg('${mode}','${esc(j.jid)}')"`}>
+        ${disp}${already?" \u2713":""}<span>${sub}</span></button>`;
+    }).join("") : `<div class="cpick-none">None saved yet \u2014 add some in the ${esc(label.split(" ")[0])} tab first.</div>`;
+    return `<div class="cpick-group">
+      <div class="cpick-head"><span class="gi ${mode}">${commuteIcon(mode)}</span>
+        <span class="gt">${esc(label)}</span><span class="gc">${(items||[]).length} saved</span></div>
+      <div class="cpick-opts">${opts}</div>
+    </div>`;
+  }).join("");
+}
+
+function addCommuteLeg(mode, jid){
+  commuteDraft.push({mode, jid});
+  renderChosenLegs();
+  renderCommutePicker();
+  checkCommute();
+}
+
+function checkCommute(){
+  const nm = document.getElementById("cname");
+  const ok = nm && nm.value.trim() && commuteDraft.length > 0;
+  document.getElementById("csave").disabled = !ok;
+}
+
+function saveCommute(){
+  const nm = document.getElementById("cname");
+  if(!nm.value.trim()){ flagMissing("cname"); return; }
+  if(!commuteDraft.length) return;
+  const entry = { name: nm.value.trim().slice(0,24), legs: commuteDraft.map(l=>({...l})) };
+  if(state.commuteEditIdx !== null && state.commutes[state.commuteEditIdx]){
+    state.commutes[state.commuteEditIdx] = entry;
+    state.commuteIdx = state.commuteEditIdx;
+  } else {
+    state.commutes.push(entry);
+    state.commuteIdx = state.commutes.length - 1;
+  }
+  state.commuteEditIdx = null;
+  saveLocal("commutes", state.commutes);
+  saveLocal("commuteidx", state.commuteIdx);
+  closeCommuteSheet();
+  renderCommutePills();
+  renderCommute();
+}
+
+function deleteCommute(){
+  const i = state.commuteEditIdx;
+  if(i === null || !state.commutes[i]) return;
+  state.commutes.splice(i,1);
+  state.commuteIdx = Math.max(0, Math.min(state.commuteIdx, state.commutes.length-1));
+  state.commuteEditIdx = null;
+  saveLocal("commutes", state.commutes);
+  saveLocal("commuteidx", state.commuteIdx);
+  closeCommuteSheet();
+  renderCommutePills();
+  renderCommute();
+}
+
 /* ---- boot ---- */
 
 /* This domain previously hosted an older PWA whose service worker can still be
@@ -2595,6 +3084,7 @@ state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
 (function restoreTube(){
   const arr = readLocal("tubejourneys");
   if(Array.isArray(arr)) state.tubeJourneys = arr.filter(j=>j && j.from && j.to && j.name);
+  if(backfillIds(state.tubeJourneys,"tube")) saveLocal("tubejourneys", state.tubeJourneys);
   const i = readLocal("tubeidx");
   state.tubeIdx = (typeof i === "number" && i >= 0 && i < state.tubeJourneys.length) ? i : 0;
 })();
@@ -2603,6 +3093,7 @@ state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
   if(Array.isArray(arr) && arr.length && arr.every(j=>j && j.from && j.to && j.name)){
     state.journeys = arr;
   }
+  if(backfillIds(state.journeys,"rail")) saveLocal("journeys", state.journeys);
   const i = readLocal("jrnidx");
   state.jrnIdx = (typeof i === "number" && i >= 0 && i < state.journeys.length) ? i : 0;
 })();
@@ -2610,8 +3101,15 @@ state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
   const arr = readLocal("busstops");
   if(Array.isArray(arr) && arr.length){ state.busStops = arr; }
   else { const old = readLocal("busstop"); if(old && old.id) state.busStops = [old]; }  // migrate
+  if(backfillIds(state.busStops,"bus")) saveLocal("busstops", state.busStops);
   const idx = readLocal("busidx");
   state.busIdx = (typeof idx === "number" && idx >= 0 && idx < state.busStops.length) ? idx : 0;
+})();
+(function restoreCommutes(){
+  const arr = readLocal("commutes");
+  if(Array.isArray(arr)) state.commutes = arr.filter(c=>c && c.name && Array.isArray(c.legs));
+  const i = readLocal("commuteidx");
+  state.commuteIdx = (typeof i === "number" && i >= 0 && i < state.commutes.length) ? i : 0;
 })();
 
 applyMode();
