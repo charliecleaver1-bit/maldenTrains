@@ -23,6 +23,10 @@
     --line:#E1E7EB;
     --amber:#0E5C54;      /* brand teal (was amber) — primary accent */
     --amber-dim:#0A4A43;
+    --teal:#0E5C54;       /* alias — commute/drawer/rail use --teal */
+    --teal-dim:#0A4A43;
+    --rail:#0E5C54;       /* rail mode colour */
+    --tube:#C0392B;       /* tube mode colour */
     --delay:#B5730B;      /* readable amber, used only for "delayed" */
     --text:#16242B;
     --muted:#5E6E76;
@@ -541,6 +545,8 @@
     font-weight:600;cursor:pointer;color:var(--text);display:inline-flex;flex-direction:column;gap:1px;text-align:left;max-width:100%;}
   .cpick-opt span{font-size:10.5px;font-weight:400;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;}
   .cpick-opt:hover{border-color:var(--teal);}
+  .cpick-new{border-style:dashed;color:var(--teal);}
+  .cpick-new span{color:var(--muted-2);}
   .cpick-none{font-size:12px;color:var(--muted-2);padding:2px 2px 0;font-style:italic;}
 
   /* historic reliability on the detail panel */
@@ -862,7 +868,7 @@
   </footer>
 </div>
 
-<div class="scrim" id="scrim" onclick="closeJourneySheet()"></div>
+<div class="scrim" id="scrim" onclick="cancelLegSheet('rail')"></div>
 <div class="sheet" id="sheet" role="dialog" aria-label="Add a journey">
   <div class="grab"></div>
   <h2 id="sheet-title">Add a journey</h2>
@@ -888,10 +894,10 @@
   <div class="jnote" id="jnote" hidden></div>
   <button class="sheet-save" id="jsave" disabled onclick="saveJourney()">Save journey</button>
   <button class="sheet-delete" id="jdelete" hidden onclick="deleteJourney()">Delete this journey</button>
-  <button class="sheet-cancel" onclick="closeJourneySheet()">Cancel</button>
+  <button class="sheet-cancel" onclick="cancelLegSheet('rail')">Cancel</button>
 </div>
 
-<div class="scrim" id="tscrim" onclick="closeTubeSheet()"></div>
+<div class="scrim" id="tscrim" onclick="cancelLegSheet('tube')"></div>
 <div class="sheet" id="tsheet" role="dialog" aria-label="Add a tube journey">
   <div class="grab"></div>
   <h2 id="tsheet-title">Add a tube journey</h2>
@@ -914,7 +920,7 @@
 
   <button class="sheet-save" id="tjsave" disabled onclick="saveTubeJourney()">Save journey</button>
   <button class="sheet-delete" id="tjdelete" hidden onclick="deleteTubeJourney()">Delete this journey</button>
-  <button class="sheet-cancel" onclick="closeTubeSheet()">Cancel</button>
+  <button class="sheet-cancel" onclick="cancelLegSheet('tube')">Cancel</button>
 </div>
 
 <div class="scrim" id="cscrim" onclick="closeCommuteSheet()"></div>
@@ -934,8 +940,10 @@
     <input id="cname" placeholder="e.g. Work — morning" maxlength="24" autocomplete="off" oninput="checkCommute()" />
   </div>
 
-  <div class="lbl-cap">Your commute so far</div>
-  <div class="chosen-legs" id="chosen-legs"></div>
+  <div id="commute-sofar" hidden>
+    <div class="lbl-cap">Your commute so far</div>
+    <div class="chosen-legs" id="chosen-legs"></div>
+  </div>
 
   <div class="lbl-cap" style="margin-top:16px">Add a leg — tap to append</div>
   <div id="commute-picker"></div>
@@ -945,7 +953,7 @@
   <button class="sheet-cancel" onclick="closeCommuteSheet()">Cancel</button>
 </div>
 
-<div class="scrim" id="bscrim" onclick="closeBusSheet()"></div>
+<div class="scrim" id="bscrim" onclick="cancelLegSheet('bus')"></div>
 <div class="sheet" id="bsheet" role="dialog" aria-label="Add a bus stop">
   <div class="grab"></div>
   <h2 id="bsheet-title">Add a bus stop</h2>
@@ -976,7 +984,7 @@
 
   <button class="sheet-save" id="bsave" disabled onclick="saveBusStop()">Save stop</button>
   <button class="sheet-delete" id="bdelete" hidden onclick="deleteBusStop()">Delete this stop</button>
-  <button class="sheet-cancel" onclick="closeBusSheet()">Cancel</button>
+  <button class="sheet-cancel" onclick="cancelLegSheet('bus')">Cancel</button>
 </div>
 
 <script src="/stations.js"></script>
@@ -1954,12 +1962,15 @@ async function saveJourney(){
   }
 
   const name = nm.value.trim().slice(0,20);
+  let newJid = null;
   if(state.jrnEditIdx !== null && state.journeys[state.jrnEditIdx]){
     const jid = state.journeys[state.jrnEditIdx].jid || newId("rail");
     state.journeys[state.jrnEditIdx] = { jid, name, from, to };   // update in place
     state.jrnIdx = state.jrnEditIdx;
+    newJid = jid;
   } else {
-    state.journeys.push({ jid:newId("rail"), name, from, to });
+    newJid = newId("rail");
+    state.journeys.push({ jid:newJid, name, from, to });
     state.jrnIdx = state.journeys.length - 1;
   }
   state.jrnEditIdx = null;
@@ -1968,6 +1979,7 @@ async function saveJourney(){
   saveLocal("journeys", state.journeys);
   saveLocal("jrnidx", state.jrnIdx);
   closeJourneySheet();
+  if(returnToCommute("rail", newJid)) return;   // was created for a commute
   render();
   refresh(false);
 }
@@ -2341,6 +2353,7 @@ function saveBusStop(){
   saveLocal("busstops", state.busStops);
   saveLocal("busidx", state.busIdx);
   closeBusSheet();
+  if(returnToCommute("bus", entry.jid)) return;
   renderSwitcher();
   fillStopHead();
   refresh(false);
@@ -2964,6 +2977,7 @@ function saveTubeJourney(){
   saveLocal("tubejourneys", state.tubeJourneys);
   saveLocal("tubeidx", state.tubeIdx);
   closeTubeSheet();
+  if(returnToCommute("tube", entry.jid)) return;
   renderTubePills();
   loadTubeJourney();
 }
@@ -3119,7 +3133,7 @@ function busSub(j){
 }
 function cap(s){ return s ? s[0].toUpperCase()+s.slice(1) : s; }
 function commuteIcon(mode){
-  if(mode==="rail") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="12" height="12" rx="2"/><path d="M6 11h12M9 20l-2 2M15 20l2 2"/></svg>`;
+  if(mode==="rail") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="13" rx="2.5"/><path d="M5 11h14"/><path d="M8 20l-1.5 1.5M16 20l1.5 1.5"/><circle cx="9" cy="13.5" r="0.6" fill="#fff" stroke="none"/><circle cx="15" cy="13.5" r="0.6" fill="#fff" stroke="none"/></svg>`;
   if(mode==="bus") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="12" rx="2"/><path d="M5 11h14M8 20l-1 1M16 20l1 1"/></svg>`;
   return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M4 12h16" stroke-linecap="round"/></svg>`;
 }
@@ -3246,8 +3260,11 @@ function flipCommute(srcIdx){
 function renderFlipList(){
   const el = document.getElementById("flip-list");
   if(!el) return;
-  if(!state.commutes.length){ document.getElementById("flip-choice").hidden = true; return; }
-  el.innerHTML = state.commutes.map((c,i)=>{
+  // Only offer commutes that actually have legs to flip.
+  const flippable = state.commutes.filter(c=>c && c.legs && c.legs.length);
+  if(!flippable.length){ document.getElementById("flip-choice").hidden = true; return; }
+  el.innerHTML = flippable.map((c)=>{
+    const i = state.commutes.indexOf(c);
     const dots = (c.legs||[]).map(l=>{
       const col = l.mode==="rail"?"var(--teal)":l.mode==="bus"?"var(--bus)":"var(--red)";
       return `<span class="fo-d" style="background:${col}"></span>`;
@@ -3263,6 +3280,7 @@ function renderFlipList(){
 
 function openCommuteSheet(i, ev){
   if(ev) ev.stopPropagation();
+  pendingCommuteLeg = null;
   const editing = (typeof i === "number" && state.commutes[i]);
   state.commuteEditIdx = editing ? i : null;
   const c = editing ? state.commutes[i] : null;
@@ -3294,10 +3312,14 @@ function closeCommuteSheet(){
 
 function renderChosenLegs(){
   const el = document.getElementById("chosen-legs");
+  const wrap = document.getElementById("commute-sofar");
+  // Only show the "so far" section once there's at least one leg — no empty box.
   if(!commuteDraft.length){
-    el.innerHTML = `<div class="chosen-empty">Nothing added yet \u2014 pick from your saved journeys below.</div>`;
+    if(wrap) wrap.hidden = true;
+    el.innerHTML = "";
     return;
   }
+  if(wrap) wrap.hidden = false;
   el.innerHTML = commuteDraft.map((leg,i)=>{
     const j = resolveLeg(leg);
     const broken = !j;
@@ -3331,20 +3353,71 @@ function renderCommutePicker(){
     ["tube","Tube journeys", state.tubeJourneys],
   ];
   document.getElementById("commute-picker").innerHTML = groups.map(([mode,label,items])=>{
-    const opts = (items&&items.length) ? items.map(j=>{
+    const existing = (items&&items.length) ? items.map(j=>{
       const already = commuteDraft.some(d=>d.mode===mode && d.jid===j.jid);
       const sub = mode==="bus" ? esc(j.label&&j.name&&j.label!==j.name ? j.name : (j.toward?("towards "+j.toward):""))
         : `${esc(nmeOf(j,"from"))} \u2192 ${esc(nmeOf(j,"to"))}`;
       const disp = mode==="bus" ? esc(j.label||j.name) : esc(j.name);
       return `<button class="cpick-opt" ${already?"disabled style='opacity:.45'":`onclick="addCommuteLeg('${mode}','${esc(j.jid)}')"`}>
         ${disp}${already?" \u2713":""}<span>${sub}</span></button>`;
-    }).join("") : `<div class="cpick-none">None saved yet \u2014 add some from the ${esc(label.split(" ")[0])} screen (in the menu) first.</div>`;
+    }).join("") : "";
+
+    // Always offer to create a brand-new one inline — you don't have to have
+    // saved it first.
+    const createLabel = mode==="bus" ? "New stop" : "New journey";
+    const createBtn = `<button class="cpick-opt cpick-new" onclick="createLegInline('${mode}')">
+      \uFF0B ${createLabel}<span>set one up now</span></button>`;
+
+    const body = existing + createBtn;
     return `<div class="cpick-group">
       <div class="cpick-head"><span class="gi ${mode}">${commuteIcon(mode)}</span>
         <span class="gt">${esc(label)}</span><span class="gc">${(items||[]).length} saved</span></div>
-      <div class="cpick-opts">${opts}</div>
+      <div class="cpick-opts">${body}</div>
     </div>`;
   }).join("");
+}
+
+/* Create a leg's journey from inside the commute builder. Opens the normal
+   rail/bus/tube sheet; when saved, the new journey is appended to the commute
+   draft automatically. */
+function createLegInline(mode){
+  pendingCommuteLeg = mode;              // flag: the next save should join the commute
+  // keep the commute sheet open underneath; just open the mode sheet on top
+  if(mode==="rail") openJourneySheet();
+  else if(mode==="bus") openBusSheet();
+  else if(mode==="tube") openTubeSheet();
+}
+let pendingCommuteLeg = null;
+
+/* Cancel/dismiss a mode sheet. If it was opened to create a commute leg, drop
+   the pending flag and hop back to the commute builder empty-handed. */
+function cancelLegSheet(mode){
+  if(mode==="rail") closeJourneySheet();
+  else if(mode==="tube") closeTubeSheet();
+  else if(mode==="bus") closeBusSheet();
+  if(pendingCommuteLeg){
+    pendingCommuteLeg = null;
+    document.getElementById("cscrim").classList.add("open");
+    document.getElementById("csheet").classList.add("open");
+  }
+}
+
+/* Called at the end of each mode's save. If we were creating a leg for a
+   commute, append the freshly-saved journey to the draft and pop back to the
+   commute builder. Returns true if it handled the return (so the caller skips
+   its normal post-save rendering). */
+function returnToCommute(mode, jid){
+  if(pendingCommuteLeg !== mode || !jid) return false;
+  pendingCommuteLeg = null;
+  commuteDraft.push({ mode, jid });
+  // reopen the commute sheet where we left off (still creating, not editing)
+  document.getElementById("cscrim").classList.add("open");
+  document.getElementById("csheet").classList.add("open");
+  const fc = document.getElementById("flip-choice"); if(fc) fc.hidden = true;
+  renderChosenLegs();
+  renderCommutePicker();
+  checkCommute();
+  return true;
 }
 
 function addCommuteLeg(mode, jid){
