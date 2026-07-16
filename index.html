@@ -498,6 +498,13 @@
   .cpick-opt:hover{border-color:var(--teal);}
   .cpick-none{font-size:12px;color:var(--muted-2);padding:2px 2px 0;font-style:italic;}
 
+  .reorder-row{display:flex;align-items:center;gap:8px;margin:2px 0 10px;}
+  .reorder-lbl{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted-2);margin-right:auto;}
+  .reorder-btn{width:38px;height:34px;border:1px solid var(--line);background:var(--surface);border-radius:9px;
+    font-size:16px;color:var(--text);cursor:pointer;display:grid;place-items:center;}
+  .reorder-btn:hover{border-color:var(--teal);color:var(--teal);}
+  .reorder-btn:disabled{opacity:.3;cursor:default;}
+
   .swap-row{display:flex;justify-content:center;margin:-4px 0 8px;position:relative;height:0;z-index:3;}
   .swap-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
     color:var(--teal);display:grid;place-items:center;cursor:pointer;transform:translateY(-2px);
@@ -789,6 +796,11 @@
   </div>
   <div class="jnote" id="jnote" hidden></div>
   <button class="sheet-save" id="jsave" disabled onclick="saveJourney()">Save journey</button>
+  <div class="reorder-row" id="jrn-reorder" hidden>
+    <span class="reorder-lbl">Position</span>
+    <button type="button" class="reorder-btn" onclick="moveJourney(-1)" title="Move earlier" aria-label="Move earlier">←</button>
+    <button type="button" class="reorder-btn" onclick="moveJourney(1)" title="Move later" aria-label="Move later">→</button>
+  </div>
   <button class="sheet-delete" id="jdelete" hidden onclick="deleteJourney()">Delete this journey</button>
   <button class="sheet-cancel" onclick="closeJourneySheet()">Cancel</button>
 </div>
@@ -815,6 +827,11 @@
   </div>
 
   <button class="sheet-save" id="tjsave" disabled onclick="saveTubeJourney()">Save journey</button>
+  <div class="reorder-row" id="tj-reorder" hidden>
+    <span class="reorder-lbl">Position</span>
+    <button type="button" class="reorder-btn" onclick="moveTubeJourney(-1)" title="Move earlier" aria-label="Move earlier">←</button>
+    <button type="button" class="reorder-btn" onclick="moveTubeJourney(1)" title="Move later" aria-label="Move later">→</button>
+  </div>
   <button class="sheet-delete" id="tjdelete" hidden onclick="deleteTubeJourney()">Delete this journey</button>
   <button class="sheet-cancel" onclick="closeTubeSheet()">Cancel</button>
 </div>
@@ -837,6 +854,11 @@
   <div id="commute-picker"></div>
 
   <button class="sheet-save" id="csave" onclick="saveCommute()">Save commute</button>
+  <div class="reorder-row" id="c-reorder" hidden>
+    <span class="reorder-lbl">Position</span>
+    <button type="button" class="reorder-btn" onclick="moveCommute(-1)" title="Move earlier" aria-label="Move earlier">←</button>
+    <button type="button" class="reorder-btn" onclick="moveCommute(1)" title="Move later" aria-label="Move later">→</button>
+  </div>
   <button class="sheet-delete" id="cdelete" hidden onclick="deleteCommute()">Delete this commute</button>
   <button class="sheet-cancel" onclick="closeCommuteSheet()">Cancel</button>
 </div>
@@ -871,6 +893,11 @@
   </div>
 
   <button class="sheet-save" id="bsave" disabled onclick="saveBusStop()">Save stop</button>
+  <div class="reorder-row" id="b-reorder" hidden>
+    <span class="reorder-lbl">Position</span>
+    <button type="button" class="reorder-btn" onclick="moveBusStop(-1)" title="Move earlier" aria-label="Move earlier">←</button>
+    <button type="button" class="reorder-btn" onclick="moveBusStop(1)" title="Move later" aria-label="Move later">→</button>
+  </div>
   <button class="sheet-delete" id="bdelete" hidden onclick="deleteBusStop()">Delete this stop</button>
   <button class="sheet-cancel" onclick="closeBusSheet()">Cancel</button>
 </div>
@@ -1703,6 +1730,7 @@ function openJourneySheet(i){
 
   const del = document.getElementById("jdelete");
   if(del) del.hidden = !editing;
+  setupReorder("jrn", editing ? i : null, state.journeys.length);
 
   setJourneyNote("");
   fillSlot("from"); fillSlot("to"); checkJourney();
@@ -2092,6 +2120,7 @@ function openBusSheet(i, ev){
 
   document.getElementById("bsheet-title").textContent = editing ? "Edit bus stop" : "Add a bus stop";
   document.getElementById("bdelete").hidden = !editing;
+  setupReorder("b", editing ? i : null, state.busStops.length);
   document.getElementById("bname").value = s ? (s.label || "") : "";
 
   // Editing: skip the finder, go straight to naming. Adding: show the finder.
@@ -2648,6 +2677,7 @@ async function openTubeSheet(i, ev){
   document.getElementById("tsheet-title").textContent = editing ? "Edit tube journey" : "Add a tube journey";
   document.getElementById("tjname").value = j ? j.name : "";
   document.getElementById("tjdelete").hidden = !editing;
+  setupReorder("tj", editing ? i : null, state.tubeJourneys.length);
   document.getElementById("t-routewrap").innerHTML = "";
   document.getElementById("t-namefld").hidden = !editing;
 
@@ -3014,6 +3044,7 @@ function openCommuteSheet(i, ev){
   document.getElementById("csheet-title").textContent = editing ? "Edit commute" : "Build a commute";
   document.getElementById("cname").value = c ? c.name : "";
   document.getElementById("cdelete").hidden = !editing;
+  setupReorder("c", editing ? i : null, state.commutes.length);
 
   renderChosenLegs();
   renderCommutePicker();
@@ -3204,11 +3235,91 @@ state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
   state.commuteIdx = (typeof i === "number" && i >= 0 && i < state.commutes.length) ? i : 0;
 })();
 
+
+/* ---- reordering saved journeys / stops / commutes ----
+   The reorder row only appears when editing an existing entry. Arrows are
+   disabled at the ends. Each move persists immediately and re-renders pills. */
+function setupReorder(kind, idx, total){
+  const row = document.getElementById(kind+"-reorder");
+  if(!row) return;
+  const editing = (idx !== null && idx !== undefined);
+  row.hidden = !editing || total <= 1;           // nothing to reorder if 0/1 items
+  if(row.hidden) return;
+  const btns = row.querySelectorAll(".reorder-btn");
+  btns[0].disabled = (idx === 0);                 // already first
+  btns[1].disabled = (idx === total - 1);         // already last
+}
+
+/* Swap an item with its neighbour in `arr`, persist, re-render, and keep the
+   sheet's edit index pointing at the same item in its new position. */
+function reorderGeneric(arr, storageKey, idxKey, editIdxKey, renderFn, dir){
+  const i = state[editIdxKey];
+  if(i === null || i === undefined) return;
+  const j = i + dir;
+  if(j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  state[editIdxKey] = j;
+  if(state[idxKey] === i) state[idxKey] = j;       // keep selection on the moved item
+  else if(state[idxKey] === j) state[idxKey] = i;
+  saveLocal(storageKey, arr);
+  saveLocal(idxKey === "jrnIdx" ? "jrnidx" : idxKey === "tubeIdx" ? "tubeidx" : idxKey === "busIdx" ? "busidx" : "commuteidx", state[idxKey]);
+  renderFn();
+  return j;
+}
+
+function moveJourney(dir){
+  const j = reorderGeneric(state.journeys, "journeys", "jrnIdx", "jrnEditIdx", renderJourneys, dir);
+  if(j !== undefined) setupReorder("jrn", j, state.journeys.length);
+}
+function moveTubeJourney(dir){
+  const j = reorderGeneric(state.tubeJourneys, "tubejourneys", "tubeIdx", "tubeEditIdx", renderTubePills, dir);
+  if(j !== undefined) setupReorder("tj", j, state.tubeJourneys.length);
+}
+function moveBusStop(dir){
+  const j = reorderGeneric(state.busStops, "busstops", "busIdx", "busEditIdx", renderSwitcher, dir);
+  if(j !== undefined) setupReorder("b", j, state.busStops.length);
+}
+function moveCommute(dir){
+  const j = reorderGeneric(state.commutes, "commutes", "commuteIdx", "commuteEditIdx", renderCommutePills, dir);
+  if(j !== undefined) setupReorder("c", j, state.commutes.length);
+}
+
 applyMode();
 tick();
 render();
 refresh(false);            // fetch once when the page opens
 setInterval(tick, 1000);   // local clock + countdown only — no API calls
+
+/* ---- auto-refresh ----
+   Poll for fresh live data on a fixed cadence, but only when the tab is
+   actually visible — no point hammering the APIs for a backgrounded tab, and
+   it saves the user's battery and our rate limit. When the tab comes back to
+   the foreground, refresh once immediately if the data's gone stale. */
+const AUTO_REFRESH_MS = 30000;
+let autoTimer = null;
+
+function startAutoRefresh(){
+  stopAutoRefresh();
+  autoTimer = setInterval(()=>{
+    if(document.visibilityState === "visible" && !state.loading){
+      refresh(false);
+    }
+  }, AUTO_REFRESH_MS);
+}
+function stopAutoRefresh(){ if(autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible"){
+    // Been away a while? Get fresh data now rather than waiting for the timer.
+    const stale = !state.updated || (Date.now() - state.updated.getTime()) > AUTO_REFRESH_MS;
+    if(stale && !state.loading) refresh(false);
+    startAutoRefresh();
+  } else {
+    stopAutoRefresh();   // pause polling while hidden
+  }
+});
+
+startAutoRefresh();
 </script>
 </body>
 </html>
