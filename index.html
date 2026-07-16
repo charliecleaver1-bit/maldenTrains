@@ -498,6 +498,13 @@
   .cpick-opt:hover{border-color:var(--teal);}
   .cpick-none{font-size:12px;color:var(--muted-2);padding:2px 2px 0;font-style:italic;}
 
+  .swap-row{display:flex;justify-content:center;margin:-4px 0 8px;position:relative;height:0;z-index:3;}
+  .swap-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
+    color:var(--teal);display:grid;place-items:center;cursor:pointer;transform:translateY(-2px);
+    box-shadow:0 2px 8px -2px rgba(16,40,50,.25);transition:transform .18s,background .18s;}
+  .swap-btn:hover{background:var(--surface-2);transform:translateY(-2px) rotate(180deg);}
+  .swap-btn:active{transform:translateY(-2px) scale(.92);}
+
   .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
   .station-lbl{font-size:12px;color:var(--muted);min-width:34px;}
   .station-wrap{position:relative;flex:1;}
@@ -767,6 +774,11 @@
     <label>From</label>
     <div id="from-slot"></div>
   </div>
+  <div class="swap-row">
+    <button type="button" class="swap-btn" id="jswap" onclick="swapRail()" title="Swap start and destination" aria-label="Swap start and destination">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7M7 4l3 3"/><path d="M17 20V7M17 20l3-3M17 20l-3-3"/></svg>
+    </button>
+  </div>
   <div class="fld">
     <label>To</label>
     <div id="to-slot"></div>
@@ -788,6 +800,11 @@
   <p class="sheet-hint">Pick your stations — we'll work out which line(s) to take.</p>
 
   <div class="fld"><label>From</label><div id="t-from-slot"></div></div>
+  <div class="swap-row">
+    <button type="button" class="swap-btn" id="tswap" onclick="swapTube()" title="Swap start and destination" aria-label="Swap start and destination">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7M7 4l3 3"/><path d="M17 20V7M17 20l3-3M17 20l-3-3"/></svg>
+    </button>
+  </div>
   <div class="fld"><label>To</label><div id="t-to-slot"></div></div>
 
   <div id="t-routewrap"></div>
@@ -1710,6 +1727,15 @@ function fillSlot(which){
   }
 }
 function clearPick(which){ jrnPick[which] = null; fillSlot(which); checkJourney(); }
+
+/* Swap start and destination — handy when the return trip is what you want. */
+function swapRail(){
+  if(!jrnPick.from && !jrnPick.to) return;      // nothing to swap yet
+  [jrnPick.from, jrnPick.to] = [jrnPick.to, jrnPick.from];
+  jrnPick.checked = null;                        // force a fresh direct-trains check
+  fillSlot("from"); fillSlot("to");
+  checkJourney();
+}
 
 /* Search the bundled UK station list. Name matches first, then CRS. */
 function searchStations(which, q){
@@ -2654,6 +2680,16 @@ function clearTubePick(which){
   tubeSlot(which); checkTube();
 }
 
+/* Swap start and destination, then re-plan the route the other way. */
+function swapTube(){
+  if(!tubePick.from && !tubePick.to) return;
+  [tubePick.from, tubePick.to] = [tubePick.to, tubePick.from];
+  tubeRoutes = []; tubeChosen = null;
+  tubeSlot("from"); tubeSlot("to");
+  if(tubePick.from && tubePick.to) planTube(); else { document.getElementById("t-routewrap").innerHTML=""; document.getElementById("t-namefld").hidden=true; }
+  checkTube();
+}
+
 let tubeSearchT = null;
 function searchTube(which, q){
   clearTimeout(tubeSearchT);
@@ -3128,7 +3164,24 @@ state.mode = readLocal("mode") === "bus" ? "bus" : "rail";
   state.tubeIdx = (typeof i === "number" && i >= 0 && i < state.tubeJourneys.length) ? i : 0;
 })();
 (function restoreJourneys(){
-  const arr = readLocal("journeys");
+  let arr = readLocal("journeys");
+
+  // One-time cleanup: earlier versions seeded a New Malden -> Waterloo journey
+  // for everyone. If a user never customised it, it's still sitting in their
+  // storage. Remove that specific auto-seeded entry once, so nobody inherits a
+  // commute that isn't theirs. (We only strip it if it's the ONLY journey and
+  // has no stable id — a real saved one would have a jid by now.)
+  if(!readLocal("seedCleaned")){
+    if(Array.isArray(arr) && arr.length === 1){
+      const j = arr[0];
+      const isSeed = j && !j.jid &&
+        (j.from === "NEM" || j.from === "NM" || j.from === "New Malden") &&
+        (j.to === "WAT" || j.to === "London Waterloo");
+      if(isSeed){ arr = []; saveLocal("journeys", arr); }
+    }
+    saveLocal("seedCleaned", true);
+  }
+
   if(Array.isArray(arr) && arr.length && arr.every(j=>j && j.from && j.to && j.name)){
     state.journeys = arr;
   }
