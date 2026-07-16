@@ -498,6 +498,22 @@
   .cpick-opt:hover{border-color:var(--teal);}
   .cpick-none{font-size:12px;color:var(--muted-2);padding:2px 2px 0;font-style:italic;}
 
+  /* historic reliability on the detail panel */
+  .reliability{margin-top:14px;}
+  .rel-load{font-size:12px;color:var(--muted-2);padding:4px 2px;}
+  .rel-hd{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px;}
+  .rel-title{font-size:12px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);}
+  .rel-sample{font-size:11px;color:var(--muted-2);}
+  .rel-row{display:flex;align-items:center;gap:9px;margin-bottom:6px;}
+  .rel-lbl{font-size:12px;color:var(--muted);min-width:82px;}
+  .rel-track{flex:1;height:7px;border-radius:4px;background:var(--surface-2);overflow:hidden;}
+  .rel-fill{display:block;height:100%;border-radius:4px;background:var(--muted-2);}
+  .rel-fill.good{background:var(--green);}
+  .rel-fill.ok{background:var(--delay);}
+  .rel-fill.poor{background:var(--red);}
+  .rel-pct{font-family:var(--mono);font-size:11.5px;color:var(--text);min-width:34px;text-align:right;}
+  .rel-foot{font-size:10.5px;color:var(--muted-2);margin-top:8px;padding-top:8px;border-top:1px solid var(--line);line-height:1.5;}
+
   /* pull to refresh */
   .ptr{position:fixed;top:0;left:0;right:0;display:flex;justify-content:center;align-items:flex-end;
     height:0;overflow:hidden;color:var(--teal);z-index:30;pointer-events:none;transition:none;}
@@ -1284,7 +1300,7 @@ async function openPanel(key, silent){
   state.expandedId = target ? target.id : null;
   if(!silent) panel.innerHTML = `<div class="prog-cap">Finding the train…</div>`;
   const data = await loadService(target);
-  renderProgress(panel, data);              // (re)establishes openProgress
+  renderProgress(panel, data, target);      // (re)establishes openProgress
   if(openProgress){ openProgress.target = target; openProgress.key = key; }
   startProgressAutoRefresh();
 }
@@ -1441,7 +1457,7 @@ function inboundHTML(inb){
 
 function hasInbound(data){ return data && data.inbound && data.inbound.stops && data.inbound.stops.length; }
 
-function renderProgress(panel, data){
+function renderProgress(panel, data, target){
   if(!data.stops || !data.stops.length){
     panel.innerHTML = `<div class="prog-cap">No live stop information for this train.</div>`;
     openProgress = null;
@@ -1451,7 +1467,12 @@ function renderProgress(panel, data){
   panel.innerHTML = `
     <div class="prog-cap" data-cap>${data.demo?`<span class="demo-chip">demo</span> `:""}${esc(caption||"")}</div>
     ${timelineHTML(data.stops, 70, "htl-out")}
-    ${hasInbound(data) ? inboundHTML(data.inbound) : ""}`;
+    ${hasInbound(data) ? inboundHTML(data.inbound) : ""}
+    <div class="reliability" id="rel-slot"></div>`;
+
+  // Historic reliability for THIS service — loaded lazily so it never holds up
+  // the live timeline. Only meaningful for a real saved journey with a std.
+  loadReliability(target);
 
   requestAnimationFrame(()=>{
     const outer = panel.querySelector(".htl-out");
@@ -3375,6 +3396,69 @@ function makePillsSortable(opts){
    A touch-drag down from the very top of the page triggers a refresh, the
    familiar mobile gesture. Only engages when the page is already scrolled to
    the top, so it never fights normal scrolling. */
+
+/* ---- historic reliability (HSP) ----
+   Shown only on the detail panel, loaded after the live timeline. Honest by
+   construction: always shows the sample size, never invents a figure, and
+   stays silent (rather than guessing) when HSP has no data or isn't set up. */
+async function loadReliability(target){
+  const slot = document.getElementById("rel-slot");
+  if(!slot) return;
+  const j = curJourney();
+  if(!j || !j.from || !j.to || !target || !target.std){ slot.innerHTML = ""; return; }
+
+  // demo board? don't pretend we have history for it
+  if(state.source === "demo"){ slot.innerHTML = ""; return; }
+
+  slot.innerHTML = `<div class="rel-load">Checking this train's track record…</div>`;
+  try{
+    const std = String(target.std).replace(":","");
+    const r = await fetch(`/api/hsp?from=${encodeURIComponent(j.from)}&to=${encodeURIComponent(j.to)}&std=${encodeURIComponent(std)}`,
+      { headers:{accept:"application/json"} });
+    const d = await r.json();
+
+    if(!d || !d.available){ slot.innerHTML = ""; return; }        // not set up / no data — stay quiet
+    const svc = d.service;
+    if(!svc || !svc.sample){ slot.innerHTML = ""; return; }
+
+    slot.innerHTML = relHTML(svc, d);
+  }catch(e){
+    slot.innerHTML = "";   // never let reliability failure clutter the panel
+  }
+}
+
+function relHTML(s, d){
+  // Confidence hint from sample size — small samples are labelled as such.
+  const conf = s.sample >= 40 ? "" : s.sample >= 15 ? "limited history" : "very little history";
+  const tone = s.onTimePct >= 80 ? "good" : s.onTimePct >= 60 ? "ok" : "poor";
+
+  const bar = (pct, label, cls) => `
+    <div class="rel-row">
+      <span class="rel-lbl">${label}</span>
+      <span class="rel-track"><span class="rel-fill ${cls}" style="width:${Math.max(2,pct)}%"></span></span>
+      <span class="rel-pct">${pct}%</span>
+    </div>`;
+
+  return `
+    <div class="rel-hd">
+      <span class="rel-title">Track record</span>
+      <span class="rel-sample">${s.sample} weekday${s.sample===1?"":"s"}${conf?` · ${conf}`:""}</span>
+    </div>
+    ${bar(s.onTimePct, "On time", tone)}
+    ${s.within5Pct!=null?bar(s.within5Pct, "Within 5 min", "ok"):""}
+    <div class="rel-foot">Past ${monthsBetween(d.periodFrom,d.periodTo)} · scheduled ${esc(s.std)}→${esc(s.sta||"")} · source: National Rail HSP</div>`;
+}
+
+function monthsBetween(a,b){
+  try{
+    const d1=new Date(a), d2=new Date(b);
+    const days=Math.round((d2-d1)/86400000);
+    if(days>=60) return "~3 months";
+    if(days>=25) return "~1 month";
+    return `${days} days`;
+  }catch(e){ return "recent weeks"; }
+}
+
 (function setupPullToRefresh(){
   const ptr = document.getElementById("ptr");
   if(!ptr) return;
