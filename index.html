@@ -584,8 +584,9 @@
 
   .swap-row{display:flex;justify-content:center;margin:-4px 0 8px;position:relative;height:0;z-index:3;}
   .swap-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
-    color:var(--teal);display:grid;place-items:center;cursor:pointer;transform:translateY(-2px);
-    box-shadow:0 2px 8px -2px rgba(16,40,50,.25);transition:transform .18s,background .18s;}
+    color:var(--teal);display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translateY(-2px);
+    box-shadow:0 2px 8px -2px rgba(16,40,50,.25);transition:transform .18s,background .18s;padding:0;line-height:0;}
+  .swap-btn svg{display:block;}
   .swap-btn:hover{background:var(--surface-2);transform:translateY(-2px) rotate(180deg);}
   .swap-btn:active{transform:translateY(-2px) scale(.92);}
 
@@ -740,7 +741,7 @@
 
   <div class="scrim" id="nav-scrim" onclick="closeDrawer()"></div>
   <aside class="drawer" id="drawer" aria-label="Navigation">
-    <div class="dr-hd"><h2>Commuter</h2><p>Where do you want to go?</p></div>
+    <div class="dr-hd"><h2>Commuter</h2></div>
     <button class="dr-item" id="dr-commute" aria-selected="true" onclick="setMode('commute')">
       <span class="di commute"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M6 8.2v3.4a3 3 0 0 0 3 3h4.5a3 3 0 0 1 0 6"/></svg></span>
       <span class="dr-txt">Commutes<span class="sub">your door-to-door journeys</span></span>
@@ -753,7 +754,7 @@
       <span class="dr-live" id="dr-live-rail"></span>
     </button>
     <button class="dr-item" id="dr-bus" onclick="setMode('bus')">
-      <span class="di bus"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="12" rx="2"/><path d="M5 11h14M8 20l-1 1M16 20l1 1"/></svg></span>
+      <span class="di bus"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16V6.5C5 5 6 4.5 7.5 4.5h9C18 4.5 19 5 19 6.5V16"/><path d="M4 16h16"/><path d="M5 11.5h14"/><path d="M4.5 16v2M19.5 16v2"/><circle cx="8" cy="16" r="1.3" fill="#fff" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="#fff" stroke="none"/></svg></span>
       <span class="dr-txt">Bus<span class="sub">saved bus stops</span></span>
       <span class="dr-live" id="dr-live-bus"></span>
     </button>
@@ -805,7 +806,7 @@
 
     <div class="jrn-empty" id="bus-empty" hidden>
       <div class="empty-hd">Add your first bus stop</div>
-      <p>Tap <b>&#xFF0B; Add stop</b> and we'll find the stops near you — or search by postcode.
+      <p>Tap <b>&#xFF0B; Add stop</b> and we'll find the stops near you, or search by postcode.
       Name it something like <b>Home</b> and it'll be waiting next time.</p>
     </div>
 
@@ -837,7 +838,7 @@
 
     <div class="jrn-empty" id="tube-empty" hidden>
       <div class="empty-hd">Add your first tube journey</div>
-      <p>Tap <b>&#xFF0B; Add journey</b> and pick two stations — we'll work out which line(s) to take,
+      <p>Tap <b>&#xFF0B; Add journey</b> and pick two stations. We'll work out which line(s) to take,
       including any changes, and show live trains for each leg.</p>
     </div>
 
@@ -854,7 +855,7 @@
 
     <div class="jrn-empty" id="commute-empty" hidden>
       <div class="empty-hd">Chain your journeys into a commute</div>
-      <p>A commute stacks the journeys you've already saved — rail, bus and tube — into one screen,
+      <p>A commute stacks the journeys you've already saved (rail, bus and tube) into one screen,
       in the order you travel them. Each leg shows its own live departures.</p>
       <p class="empty-tip">First save the individual legs from the <b>menu</b> (Rail, Bus, Tube),
       then tap <b>&#xFF0B; Add commute</b> to pick them by name.</p>
@@ -901,7 +902,7 @@
 <div class="sheet" id="tsheet" role="dialog" aria-label="Add a tube journey">
   <div class="grab"></div>
   <h2 id="tsheet-title">Add a tube journey</h2>
-  <p class="sheet-hint">Pick your stations — we'll work out which line(s) to take.</p>
+  <p class="sheet-hint">Pick your stations. We'll work out which line(s) to take.</p>
 
   <div class="fld"><label>From</label><div id="t-from-slot"></div></div>
   <div class="swap-row">
@@ -931,13 +932,13 @@
 
   <div class="flip-choice" id="flip-choice" hidden>
     <div class="lbl-cap">Quick start</div>
-    <p class="flip-intro">Make the return trip in one tap — flip an existing commute (order reversed, every leg's direction swapped). It becomes its own commute you can then edit.</p>
+    <p class="flip-intro">Make the return trip in one tap. Flip an existing commute (order reversed, every leg's direction swapped) and it becomes its own commute you can then edit.</p>
     <div id="flip-list"></div>
   </div>
 
   <div class="fld">
     <label>Name this commute <span class="req" id="cname-req">required</span></label>
-    <input id="cname" placeholder="e.g. Work — morning" maxlength="24" autocomplete="off" oninput="checkCommute()" />
+    <input id="cname" placeholder="e.g. Work, morning" maxlength="24" autocomplete="off" oninput="checkCommute()" />
   </div>
 
   <div id="commute-sofar" hidden>
@@ -945,7 +946,7 @@
     <div class="chosen-legs" id="chosen-legs"></div>
   </div>
 
-  <div class="lbl-cap" style="margin-top:16px">Add a leg — tap to append</div>
+  <div class="lbl-cap" style="margin-top:16px">Add a leg (tap to append)</div>
   <div id="commute-picker"></div>
 
   <button class="sheet-save" id="csave" onclick="saveCommute()">Save commute</button>
@@ -1144,7 +1145,7 @@ function reasonBlock(s){
     out.push(`<div class="reason warn"><span class="r-ic">!</span><span>Expected to be delayed later on its journey.</span></div>`);
   }
   if(s.detachFront){
-    out.push(`<div class="reason info"><span class="r-ic">\u2702</span><span>Front coaches detach en route \u2014 check before boarding.</span></div>`);
+    out.push(`<div class="reason info"><span class="r-ic">\u2702</span><span>Front coaches detach en route. Check before boarding.</span></div>`);
   }
   return out.join("");
 }
@@ -1263,7 +1264,7 @@ function render(){
   const notice = (state.messages && state.messages.length) ? state.messages[0] : null;
   al.className = "alert";
   if(notice){ al.classList.add("show","warn"); alt.textContent = notice; }
-  else if(cx>0){ al.classList.add("show","bad"); alt.textContent = `${cx} ${cx>1?"services":"service"} cancelled in the next hour — check before you travel.`; }
+  else if(cx>0){ al.classList.add("show","bad"); alt.textContent = `${cx} ${cx>1?"services":"service"} cancelled in the next hour. Check before you travel.`; }
   else if(lateBad){ al.classList.add("show","warn"); alt.textContent = `Minor delays on the line right now.`; }
 
   // --- hero (the very next train) ---
@@ -2150,14 +2151,14 @@ function findByLocation(){
   const btn = document.getElementById("loc-btn");
   const msg = document.getElementById("finder-msg");
   msg.className = "finder-msg"; msg.textContent = "";
-  if(!navigator.geolocation){ msg.textContent = "Location isn't available — enter a postcode instead."; return; }
+  if(!navigator.geolocation){ msg.textContent = "Location isn't available. Enter a postcode instead."; return; }
   btn.disabled = true; btn.textContent = "Finding you…";
   navigator.geolocation.getCurrentPosition(
     async (pos)=>{
       await fetchStops({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       resetLocBtn();
     },
-    ()=>{ msg.className="finder-msg err"; msg.textContent="Couldn't get your location — enter a postcode instead."; resetLocBtn(); },
+    ()=>{ msg.className="finder-msg err"; msg.textContent="Couldn't get your location. Enter a postcode instead."; resetLocBtn(); },
     { timeout: 8000, maximumAge: 60000 }
   );
 }
@@ -2738,7 +2739,7 @@ function renderTubeCard(){
   if(!j){ card.innerHTML = ""; alertEl.className = "alert"; return; }
   if(!tubePlan){ card.innerHTML = `<div class="troute"><div class="t-spin">Planning your route…</div></div>`; return; }
   if(tubePlan.error){
-    card.innerHTML = `<div class="troute"><div class="t-spin">Couldn't plan this journey — ${esc(tubePlan.error)}</div></div>`;
+    card.innerHTML = `<div class="troute"><div class="t-spin">Couldn't plan this journey. ${esc(tubePlan.error)}</div></div>`;
     return;
   }
 
@@ -2909,7 +2910,7 @@ async function planTube(){
       { headers:{accept:"application/json"} });
     const d = await r.json();
     if(r.status === 429){
-      wrap.innerHTML = `<div class="st-none">${esc(d.hint || "TfL is rate-limiting requests — try again in a moment.")}</div>`;
+      wrap.innerHTML = `<div class="st-none">${esc(d.hint || "TfL is rate-limiting requests. Try again in a moment.")}</div>`;
       tubeRoutes = []; tubeChosen = null; checkTube(); return;
     }
     if(!r.ok || !d.options || !d.options.length){
@@ -3134,7 +3135,7 @@ function busSub(j){
 function cap(s){ return s ? s[0].toUpperCase()+s.slice(1) : s; }
 function commuteIcon(mode){
   if(mode==="rail") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="13" rx="2.5"/><path d="M5 11h14"/><path d="M8 20l-1.5 1.5M16 20l1.5 1.5"/><circle cx="9" cy="13.5" r="0.6" fill="#fff" stroke="none"/><circle cx="15" cy="13.5" r="0.6" fill="#fff" stroke="none"/></svg>`;
-  if(mode==="bus") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><rect x="5" y="4" width="14" height="12" rx="2"/><path d="M5 11h14M8 20l-1 1M16 20l1 1"/></svg>`;
+  if(mode==="bus") return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16V6.5C5 5 6 4.5 7.5 4.5h9C18 4.5 19 5 19 6.5V16"/><path d="M4 16h16"/><path d="M5 11.5h14"/><path d="M4.5 16v2M19.5 16v2"/><circle cx="8" cy="16" r="1.3" fill="#fff" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="#fff" stroke="none"/></svg>`;
   return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M4 12h16" stroke-linecap="round"/></svg>`;
 }
 function tubeLineName(id){ return (typeof TUBE_LINES!=="undefined" && TUBE_LINES[id]) ? TUBE_LINES[id].n : id; }
@@ -3252,7 +3253,7 @@ function flipCommute(srcIdx){
     setTimeout(()=>{
       const el = document.getElementById("chosen-legs");
       if(el) el.insertAdjacentHTML("beforebegin",
-        `<div class="flip-warn" id="flip-warn">${needs} leg${needs>1?"s":""} need a return journey — the ones marked below. Pick a saved journey for each, or save the return trip from its menu screen first.</div>`);
+        `<div class="flip-warn" id="flip-warn">${needs} leg${needs>1?"s":""} need a return journey (the ones marked below). Pick a saved journey for each, or save the return trip from its menu screen first.</div>`);
     }, 0);
   }
 }
@@ -3506,19 +3507,19 @@ state.mode = ["rail","bus","tube","commute"].includes(_savedMode) ? _savedMode :
   let arr = readLocal("journeys");
 
   // One-time cleanup: earlier versions seeded a New Malden -> Waterloo journey
-  // for everyone. If a user never customised it, it's still sitting in their
-  // storage. Remove that specific auto-seeded entry once, so nobody inherits a
-  // commute that isn't theirs. (We only strip it if it's the ONLY journey and
-  // has no stable id — a real saved one would have a jid by now.)
-  if(!readLocal("seedCleaned")){
+  // for everyone. Some users edited it (giving it a jid/name) before deleting,
+  // and a stale copy can linger. This runs once per cleanup version: if the
+  // ONLY saved journey is that New Malden <-> Waterloo pair, drop it. A user who
+  // genuinely wants that journey can re-add it in two taps.
+  if(readLocal("seedCleaned") !== 2){
     if(Array.isArray(arr) && arr.length === 1){
       const j = arr[0];
-      const isSeed = j && !j.jid &&
-        (j.from === "NEM" || j.from === "NM" || j.from === "New Malden") &&
-        (j.to === "WAT" || j.to === "London Waterloo");
-      if(isSeed){ arr = []; saveLocal("journeys", arr); }
+      const nm = v => v==="NEM"||v==="NM"||v==="New Malden";
+      const wat = v => v==="WAT"||v==="London Waterloo"||v==="Waterloo";
+      const isSeed = j && ((nm(j.from)&&wat(j.to)) || (wat(j.from)&&nm(j.to)));
+      if(isSeed){ arr = []; saveLocal("journeys", arr); saveLocal("jrnidx", 0); }
     }
-    saveLocal("seedCleaned", true);
+    saveLocal("seedCleaned", 2);
   }
 
   if(Array.isArray(arr) && arr.length && arr.every(j=>j && j.from && j.to && j.name)){
