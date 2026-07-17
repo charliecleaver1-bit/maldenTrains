@@ -117,6 +117,21 @@
     <div class="hint">A stop counts as <b>passed</b> when it drops out of TfL's prediction list for that vehicle —
       real tracking, not a timetable comparison.</div>
   </div>
+  <div class="card">
+    <h2>8 · National buses (BODS)</h2>
+    <p>Live bus positions outside London. Needs <code>BODS_KEY</code> in Cloudflare
+       (free from data.bus-data.dft.gov.uk, Account &rarr; API key). <b>Raw</b> shows a sample of the SIRI XML.</p>
+    <div class="row">
+      <input id="blat" placeholder="lat" value="51.239" style="max-width:120px" />
+      <input id="blon" placeholder="lon" value="-0.170" style="max-width:120px" />
+    </div>
+    <div class="row">
+      <button onclick="go(`/api/bods?lat=${blat.value}&lon=${blon.value}`,'s8')">Run</button>
+      <button class="alt" onclick="go(`/api/bods?debug=1&lat=${blat.value}&lon=${blon.value}`,'s8')">Raw</button>
+    </div>
+    <pre id="s8">—</pre>
+    <div class="hint">Default coords are Banstead (outside TfL's area). <code>available:false</code> with a reason means key/config; an empty <code>vehicles</code> list just means nothing is reporting there right now.</div>
+  </div>
 </div>
 
 <script>

@@ -8,7 +8,7 @@
  *                got dropped.
  */
 
-const TUBE_MODES = ["tube", "dlr", "elizabeth-line", "overground"];
+const TUBE_MODES = ["tube", "dlr", "elizabeth-line", "overground", "tram"];
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);

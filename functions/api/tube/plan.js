@@ -278,7 +278,7 @@ function collectChildren(d) {
 /* One planner call, with a single back-off retry on rate limiting. */
 async function callPlanner(env, from, to) {
   const api = `https://api.tfl.gov.uk/Journey/JourneyResults/${encodeURIComponent(from)}/to/${encodeURIComponent(to)}` +
-    `?mode=tube,elizabeth-line,dlr&timeIs=Departing&journeyPreference=LeastTime` + keyQS(env, true);
+    `?mode=tube,elizabeth-line,dlr,overground,tram&timeIs=Departing&journeyPreference=LeastTime` + keyQS(env, true);
 
   let r = await fetch(api, { headers: { accept: "application/json" } });
   if (r.status === 429) {

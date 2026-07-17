@@ -642,6 +642,14 @@
   .empty{text-align:center;color:var(--muted);padding:34px 16px;border:1px dashed var(--line);border-radius:14px;font-size:13.5px;}
 
   /* ---- Footer ---- */
+  .bods-note{font-size:11.5px;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);
+    border-radius:11px;padding:10px 13px;margin-bottom:10px;line-height:1.5;}
+  .bods-note b{color:var(--text);}
+  .bods-veh{cursor:default;}
+
+  .attrib{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px;}
+  .attrib span{font-size:9.5px;color:var(--muted-2);line-height:1.5;}
+  .attrib b{font-weight:600;color:var(--muted);}
   .foot{margin-top:20px;display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted-2);}
 
   /* ---- Mode toggle (Rail | Bus) ---- */
@@ -763,7 +771,7 @@
     </button>
     <button class="dr-item" id="dr-tube" onclick="setMode('tube')">
       <span class="di tube"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M4 12h16" stroke-linecap="round"/></svg></span>
-      <span class="dr-txt">Tube<span class="sub">saved tube journeys</span></span>
+      <span class="dr-txt">Tube<span class="sub">tube, Elizabeth line, Overground, DLR, tram</span></span>
       <span class="dr-live" id="dr-live-tube"></span>
     </button>
   </aside>
@@ -870,6 +878,11 @@
 
   <footer class="foot">
     <span id="updated">—</span>
+    <div class="attrib">
+      <span>Powered by <b>National Rail Enquiries</b> (Darwin &amp; HSP)</span>
+      <span>Powered by <b>TfL Open Data</b> · Contains OS data &copy; Crown copyright and database rights 2016 and Geomni UK Map data &copy; and database rights 2019</span>
+      <span>Bus open data &copy; Crown copyright, via the <b>Bus Open Data Service</b>, licensed under the Open Government Licence v3.0</span>
+    </div>
   </footer>
 </div>
 
@@ -972,7 +985,7 @@
     <div class="divider">or enter a postcode</div>
     <div class="pc-field">
       <span class="plabel">Postcode</span>
-      <input type="text" id="pc-input" spellcheck="false" placeholder="KT3 3HL" aria-label="Postcode" onkeydown="if(event.key==='Enter')findByPostcode()" />
+      <input type="text" id="pc-input" spellcheck="false" placeholder="SW1A 1AA" aria-label="Postcode" onkeydown="if(event.key==='Enter')findByPostcode()" />
       <button class="act-primary" onclick="findByPostcode()">Search</button>
     </div>
     <div class="finder-msg" id="finder-msg"></div>
@@ -2089,7 +2102,7 @@ function applyMode(){
     commute: ["Commutes", "your saved commutes"],
     rail:    ["Rail", "live departures"],
     bus:     ["Bus", "live arrivals"],
-    tube:    ["Tube", "lines & journeys"],
+    tube:    ["Tube", "tube, Elizabeth, Overground, DLR, tram"],
   }[m] || ["Commuter", ""];
   const t = document.getElementById("screen-title"); if(t) t.textContent = meta[0];
   const sub = document.getElementById("screen-sub"); if(sub) sub.textContent = meta[1];
@@ -2183,14 +2196,63 @@ async function fetchStops(params){
   const box = document.getElementById("bus-results");
   msg.className = "finder-msg"; msg.textContent = "Looking for stops nearby…"; box.innerHTML = "";
   const qs = params.postcode ? `postcode=${encodeURIComponent(params.postcode)}` : `lat=${params.lat}&lon=${params.lon}`;
-  let stops = null;
+  let stops = null, coords = null;
   try{
     const r = await fetch(`/api/busstops?${qs}`, { headers:{accept:"application/json"} });
-    if(r.ok){ const d = await r.json(); if(Array.isArray(d.stops) && d.stops.length) stops = d.stops; }
-  }catch(e){ /* fall to demo */ }
-  if(!stops) stops = demoStops();          // preview / offline fallback
+    if(r.ok){
+      const d = await r.json();
+      if(d.lat != null && d.lon != null) coords = { lat:d.lat, lon:d.lon };
+      if(Array.isArray(d.stops) && d.stops.length) stops = d.stops;
+    }
+  }catch(e){ /* fall through */ }
+
+  if(stops){ msg.textContent = ""; renderStops(stops); return; }
+
+  // No TfL stops here. TfL only covers London, so outside it we try BODS,
+  // the national feed. BODS gives live vehicle POSITIONS, not arrival
+  // predictions, and the card says so.
+  if(coords){
+    msg.textContent = "No TfL stops here. Checking the national bus feed…";
+    try{
+      const r = await fetch(`/api/bods?lat=${coords.lat}&lon=${coords.lon}`, { headers:{accept:"application/json"} });
+      const d = await r.json();
+      if(r.ok && d.available && d.vehicles && d.vehicles.length){
+        msg.textContent = "";
+        renderBodsVehicles(d.vehicles);
+        return;
+      }
+      if(d && d.available === false && d.reason && d.reason.includes("not configured")){
+        msg.className = "finder-msg err";
+        msg.textContent = "Outside London. National bus data needs a free BODS key (see settings).";
+        return;
+      }
+      msg.className = "finder-msg err";
+      msg.textContent = "No live buses reporting near there right now.";
+      return;
+    }catch(e){ /* fall through to demo */ }
+  }
+
+  stops = demoStops();          // preview / offline fallback
   msg.textContent = "";
   renderStops(stops);
+}
+
+/* Live buses near a point, outside London (BODS). These are positions, not
+   predictions, so each row shows where the bus IS and how old the report is —
+   never a made-up arrival time. */
+function renderBodsVehicles(vehicles){
+  const box = document.getElementById("bus-results");
+  const age = s => s==null ? "" : s < 60 ? `${s}s ago` : `${Math.round(s/60)} min ago`;
+  const rows = vehicles.slice(0,10).map(v=>`
+    <div class="stop bods-veh">
+      <span class="sname"><span class="route-chip">${esc(v.line)}</span> ${v.destination?`to ${esc(v.destination)}`:""}</span>
+      <span class="sdist">${v.metres} m</span>
+      <span class="smeta">${v.origin?`from ${esc(v.origin)} · `:""}position ${age(v.ageSec)}${v.operator?` · ${esc(v.operator)}`:""}</span>
+    </div>`).join("");
+  box.innerHTML = `
+    <div class="bods-note">Outside London: showing <b>live bus positions</b> from the national feed (BODS).
+      This feed doesn't predict arrival times, so distances and report age are shown instead.</div>
+    ${rows}`;
 }
 
 function renderStops(stops){
@@ -2541,6 +2603,12 @@ const TUBE_LINES = {
   piccadilly:{n:"Piccadilly",c:"#003688"}, victoria:{n:"Victoria",c:"#0098D4"},
   "waterloo-city":{n:"Waterloo & City",c:"#95CDBA"}, "elizabeth":{n:"Elizabeth",c:"#6950A1"},
   dlr:{n:"DLR",c:"#00A4A7"},
+  /* London Overground's six named lines (2024 renaming) */
+  liberty:{n:"Liberty",c:"#676767"}, lioness:{n:"Lioness",c:"#F1A81C"},
+  mildmay:{n:"Mildmay",c:"#2277C9"}, suffragette:{n:"Suffragette",c:"#3BB54A"},
+  weaver:{n:"Weaver",c:"#7D2B5B"}, windrush:{n:"Windrush",c:"#E1251B"},
+  "london-overground":{n:"Overground",c:"#EE7C0E"},   // legacy id, just in case
+  tram:{n:"Tram",c:"#5FB526"},
 };
 const lineColour = id => (TUBE_LINES[id] && TUBE_LINES[id].c) || "#5E6E76";
 const lineName   = id => (TUBE_LINES[id] && TUBE_LINES[id].n) || id;

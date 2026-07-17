@@ -5,7 +5,7 @@
  * Debug:  ?debug=1   -> the raw TfL payload, untouched.
  */
 
-const MODES = "tube,elizabeth-line,dlr";
+const MODES = "tube,elizabeth-line,dlr,overground,tram";
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);

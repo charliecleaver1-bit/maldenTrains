@@ -1,5 +1,5 @@
 /**
- * Cloudflare Pages Function — GET /api/busstops?lat=..&lon=..  or  ?postcode=KT3+3HL
+ * Cloudflare Pages Function — GET /api/busstops?lat=..&lon=..  or  ?postcode=SW1A+1AA
  * ---------------------------------------------------------------------------------
  * Finds nearby bus stops via TfL's open Unified API. A postcode is resolved to
  * coordinates first (postcodes.io, free, no key). Returns a compact pick-list:
