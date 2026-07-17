@@ -245,9 +245,11 @@
     align-items:center;gap:8px;flex-wrap:wrap;}
   .leg-arrow{color:var(--muted-2);}
   .leg-r2{font-size:11.5px;color:var(--muted);margin-top:2px;}
-  .leg-swap{flex:none;width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
-    color:var(--amber);display:grid;place-items:center;cursor:pointer;transition:border-color .18s;}
-  .leg-swap:hover{border-color:var(--muted-2);}
+  .leg-swap{flex:none;height:38px;padding:0 13px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
+    color:var(--amber);display:flex;align-items:center;gap:6px;cursor:pointer;transition:border-color .18s,background .18s;
+    font-family:var(--body);font-size:12.5px;font-weight:600;}
+  .leg-swap span{line-height:1;}
+  .leg-swap:hover{border-color:var(--amber);background:var(--surface-2);}
 
   /* flip-an-existing chooser + per-journey status banner */
   .flip-choice{margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line);}
@@ -582,13 +584,14 @@
     transform:scale(1.05);box-shadow:0 12px 30px -8px rgba(16,40,50,.45);opacity:.96;}
   .jrn-switch:not(.sorting) .jrn-wrap{transition:transform .18s ease;}
 
-  .swap-row{display:flex;justify-content:center;margin:-4px 0 8px;position:relative;height:0;z-index:3;}
+  .swap-row{display:flex;justify-content:center;height:0;position:relative;z-index:3;margin:-6px 0 0;}
   .swap-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--surface);
-    color:var(--teal);display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translateY(-2px);
-    box-shadow:0 2px 8px -2px rgba(16,40,50,.25);transition:transform .18s,background .18s;padding:0;line-height:0;}
+    color:var(--teal);display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transform:translateY(-50%);
+    box-shadow:0 2px 8px -2px rgba(16,40,50,.25);transition:background .18s;padding:0;line-height:0;}
   .swap-btn svg{display:block;}
-  .swap-btn:hover{background:var(--surface-2);transform:translateY(-2px) rotate(180deg);}
-  .swap-btn:active{transform:translateY(-2px) scale(.92);}
+  .swap-btn:hover{background:var(--surface-2);}
+  .swap-btn:active{transform:translateY(-50%) scale(.92);}
 
   .station-row{display:flex;align-items:center;gap:10px;margin:-4px 2px 14px;}
   .station-lbl{font-size:12px;color:var(--muted);min-width:34px;}
@@ -744,7 +747,7 @@
     <div class="dr-hd"><h2>Commuter</h2></div>
     <button class="dr-item" id="dr-commute" aria-selected="true" onclick="setMode('commute')">
       <span class="di commute"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M6 8.2v3.4a3 3 0 0 0 3 3h4.5a3 3 0 0 1 0 6"/></svg></span>
-      <span class="dr-txt">Commutes<span class="sub">your door-to-door journeys</span></span>
+      <span class="dr-txt">Commutes</span>
     </button>
     <div class="dr-sep"></div>
     <div class="lbl-cap" style="padding:0 20px;margin-bottom:6px">Single modes · independent</div>
@@ -775,7 +778,8 @@
       <div class="leg-r2" id="leg-sub"></div>
     </div>
     <button class="leg-swap" onclick="swapJourney()" title="Reverse this journey" aria-label="Reverse this journey">
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 4 7l3 3"/><path d="M4 7h11a4 4 0 0 1 0 8h-1"/><path d="m17 20 3-3-3-3"/></svg>
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7M7 4l3 3"/><path d="M17 20V7M17 20l3-3M17 20l-3-3"/></svg>
+      <span>Reverse</span>
     </button>
   </div>
 
@@ -2082,7 +2086,7 @@ function applyMode(){
 
   // drawer selection + header title
   const meta = {
-    commute: ["Commutes", "your door-to-door journeys"],
+    commute: ["Commutes", "your saved commutes"],
     rail:    ["Rail", "live departures"],
     bus:     ["Bus", "live arrivals"],
     tube:    ["Tube", "lines & journeys"],
@@ -2550,7 +2554,7 @@ let tubeChosen = null;
 /* ---- line status ---- */
 async function loadTubeStatus(){
   try{
-    const r = await fetch(`/api/tube/status?_=${Date.now()}`, { headers:{accept:"application/json"}, cache:"no-store" });
+    const r = await fetch(`/api/tube/status`, { headers:{accept:"application/json"} });
     const d = await r.json();
     if(!r.ok || !Array.isArray(d.lines)) throw new Error(d.error || "status failed");
     tubeStatus = d.lines;
@@ -2640,8 +2644,12 @@ async function loadTubeJourney(){
   const j = curTube();
   if(!j){ renderTubeCard(); return; }
   try{
-    const r = await fetch(`/api/tube/plan?from=${encodeURIComponent(j.from.id)}&to=${encodeURIComponent(j.to.id)}&_=${Date.now()}`,
-      { headers:{accept:"application/json"}, cache:"no-store" });
+    // The route itself barely changes, so allow the browser + edge cache to
+    // serve it instantly (no cachebuster, no no-store). Live times come from
+    // the board calls below, which stay fresh. This is the big speed win:
+    // the journey shape paints immediately instead of waiting on a full plan.
+    const r = await fetch(`/api/tube/plan?from=${encodeURIComponent(j.from.id)}&to=${encodeURIComponent(j.to.id)}`,
+      { headers:{accept:"application/json"} });
     const d = await r.json();
     if(r.status === 429) throw new Error((d.hint || d.error || "TfL is rate-limiting requests."));
     if(!r.ok || !d.options || !d.options.length) throw new Error(d.error || d.note || "no route");
@@ -2654,21 +2662,27 @@ async function loadTubeJourney(){
     console.error("Tube plan failed:", e);
     tubePlan = { error: String(e.message || e) };
   }
-  renderTubeCard();
+  renderTubeCard();                              // paint the route/skeleton NOW
   if(tubePlan && tubePlan.legs) loadTubeArrivals();
 }
 
-/* Live arrivals for each leg's station — direction-filtered, next 2 trains. */
+/* Live arrivals for each leg's station — direction-filtered, next 2 trains.
+   Two phases so the times you actually care about show as fast as possible:
+     1. fetch every leg's board in parallel, render immediately
+     2. fetch crowding for each station in the background, render again
+   Crowding is a nice-to-have; it no longer blocks the departure times. */
 async function loadTubeArrivals(){
   const legs = tubePlan.legs;
+  const planAtStart = tubePlan;                  // guard against a stale re-render
 
-
-  await Promise.all(legs.map(async (l,i)=>{
+  // Phase 1 — times only, in parallel. No cachebuster: the board endpoint
+  // sets a short cache-control, so a repeat within a few seconds is instant
+  // while still being live.
+  await Promise.all(legs.map(async (l)=>{
     try{
-      // Next 2 live trains at this leg's station, right now — no projection.
       const q = `/api/tube/board?line=${encodeURIComponent(l.line)}&stop=${encodeURIComponent(l.fromId)}` +
-                `&direction=${encodeURIComponent(l.direction||"")}&after=0&_=${Date.now()}`;
-      const r = await fetch(q, { headers:{accept:"application/json"}, cache:"no-store" });
+                `&direction=${encodeURIComponent(l.direction||"")}&after=0`;
+      const r = await fetch(q, { headers:{accept:"application/json"} });
       const d = await r.json();
       l._arrivals = (r.ok && Array.isArray(d.arrivals)) ? d.arrivals : [];
       l._beyond = !!(d && d.beyondWindow);
@@ -2677,28 +2691,40 @@ async function loadTubeArrivals(){
       console.error("Tube arrivals failed for", l.line, e);
       l._arrivals = [];
     }
+  }));
 
-    // How busy is the station you're standing in?
+  if(tubePlan !== planAtStart) return;           // user switched journeys mid-load
+  renderTubeCard();                              // TIMES ON SCREEN NOW
+
+  // Phase 2 — crowding, in the background. Doesn't hold up the times.
+  loadTubeCrowding(planAtStart);
+}
+
+/* Station busyness for each leg + destination. Runs after the times are already
+   visible, then repaints to fill in the crowding chips. */
+async function loadTubeCrowding(planAtStart){
+  const legs = planAtStart.legs;
+  const jobs = legs.map(async (l)=>{
     try{
       const c = await fetch(`/api/tube/crowding?stop=${encodeURIComponent(l.fromId)}`,
         { headers:{accept:"application/json"} });
       const cd = await c.json();
       l._crowd = (c.ok && cd.available) ? cd : null;
     }catch(e){ l._crowd = null; }
-  }));
-
-  // …and the destination station too, so the last stop isn't a blank.
+  });
   const last = legs[legs.length-1];
   if(last && last.toId){
-    try{
-      const c = await fetch(`/api/tube/crowding?stop=${encodeURIComponent(last.toId)}`,
-        { headers:{accept:"application/json"} });
-      const cd = await c.json();
-      tubePlan._destCrowd = (c.ok && cd.available) ? cd : null;
-    }catch(e){ tubePlan._destCrowd = null; }
+    jobs.push((async ()=>{
+      try{
+        const c = await fetch(`/api/tube/crowding?stop=${encodeURIComponent(last.toId)}`,
+          { headers:{accept:"application/json"} });
+        const cd = await c.json();
+        planAtStart._destCrowd = (c.ok && cd.available) ? cd : null;
+      }catch(e){ planAtStart._destCrowd = null; }
+    })());
   }
-
-  renderTubeCard();
+  await Promise.all(jobs);
+  if(tubePlan === planAtStart) renderTubeCard();  // fill in crowding chips
 }
 
 /* Crowding is TfL's live station busyness, expressed relative to the busiest
