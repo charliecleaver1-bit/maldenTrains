@@ -1710,6 +1710,7 @@ async function refresh(manual){
     state.source = res.source;
     state.services = res.services;
     render();
+    warmReliability();        // background: warm the HSP cache for likely taps
   }
 
   state.updated = new Date();
@@ -3780,6 +3781,38 @@ function makePillsSortable(opts){
    Shown only on the detail panel, loaded after the live timeline. Honest by
    construction: always shows the sample size, never invents a figure, and
    stays silent (rather than guessing) when HSP has no data or isn't set up. */
+
+/* ---- HSP cache pre-warming ----
+   HSP is slow on a cold query (a known trait of the API), but our endpoint
+   caches each train's track record at the edge for 24h. So after the rail
+   board paints, quietly request reliability for the next couple of trains in
+   the background. By the time a train is tapped, its Track record is usually
+   already cached and appears instantly. Fire-and-forget: results are ignored
+   here, failures are silent, and a session-level set stops the 30s
+   auto-refresh from re-firing the same warms. */
+const warmedHsp = new Set();
+function warmReliability(){
+  try{
+    if(state.source === "demo") return;              // no history for fake trains
+    const j = curJourney();
+    if(!j || !j.from || !j.to) return;
+    (state.services || [])
+      .filter(s => !s.departed && s.std)
+      .slice(0, 2)                                   // the likely taps
+      .forEach((s, i) => {
+        const std = String(s.std).replace(":","");
+        const key = `${j.from}|${j.to}|${std}`;
+        if(warmedHsp.has(key)) return;
+        warmedHsp.add(key);
+        // stagger slightly so we never burst HSP
+        setTimeout(()=>{
+          fetch(`/api/hsp?from=${encodeURIComponent(j.from)}&to=${encodeURIComponent(j.to)}&std=${encodeURIComponent(std)}`,
+            { headers:{accept:"application/json"} }).catch(()=>{});
+        }, 400 + i*1500);
+      });
+  }catch(e){ /* warming must never break the board */ }
+}
+
 async function loadReliability(target){
   const slot = document.getElementById("rel-slot");
   if(!slot) return;
