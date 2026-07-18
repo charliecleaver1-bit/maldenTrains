@@ -3477,7 +3477,11 @@ function renderCommutePicker(){
    draft automatically. */
 function createLegInline(mode){
   pendingCommuteLeg = mode;              // flag: the next save should join the commute
-  // keep the commute sheet open underneath; just open the mode sheet on top
+  // Hide the commute sheet first: all sheets share a z-index, so the rail and
+  // tube sheets (earlier in the DOM) would otherwise open UNDERNEATH it and
+  // look like nothing happened. returnToCommute / cancelLegSheet re-open it.
+  document.getElementById("cscrim").classList.remove("open");
+  document.getElementById("csheet").classList.remove("open");
   if(mode==="rail") openJourneySheet();
   else if(mode==="bus") openBusSheet();
   else if(mode==="tube") openTubeSheet();
