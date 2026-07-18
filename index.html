@@ -274,6 +274,42 @@
   .jstatus.bad .jd{background:var(--red);}
   .jstatus b{font-weight:600;}
 
+  /* alerts screen */
+  .di.alerts{background:linear-gradient(160deg,#B5730B,#8A5709);}
+  .di.about{background:linear-gradient(160deg,#5E6E76,#3C4A52);}
+  .al-status{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:15px 16px;margin-bottom:16px;}
+  .al-status h3{font-family:var(--display);font-size:14.5px;margin-bottom:6px;}
+  .al-status p{font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:10px;}
+  .al-btn{border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:11px 15px;
+    font-family:var(--display);font-weight:600;font-size:13px;color:var(--teal);cursor:pointer;margin-right:8px;}
+  .al-btn.primary{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .al-btn:disabled{opacity:.45;cursor:default;}
+  .al-ok{color:var(--green);font-weight:600;font-size:12.5px;}
+  .al-err{color:var(--red);font-size:12.5px;line-height:1.5;}
+  .al-warn-ios{background:rgba(181,115,11,.09);border:1px solid rgba(181,115,11,.28);color:#8A5709;
+    border-radius:11px;padding:10px 13px;font-size:12px;line-height:1.55;margin-top:10px;}
+  .al-group{margin-bottom:16px;}
+  .al-row{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;overflow:hidden;}
+  .al-row-hd{display:flex;align-items:center;gap:11px;padding:12px 14px;cursor:pointer;}
+  .al-row-hd .nm{flex:1;font-weight:600;font-size:14px;min-width:0;}
+  .al-row-hd .nm .sub{display:block;font-size:11px;font-weight:400;color:var(--muted);margin-top:1px;}
+  .bell{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);
+    display:grid;place-items:center;cursor:pointer;color:var(--muted-2);flex:none;}
+  .bell.on{color:#fff;background:var(--delay);border-color:var(--delay);}
+  .al-cfg{border-top:1px solid var(--line);padding:12px 14px;display:none;}
+  .al-row.open .al-cfg{display:block;}
+  .day-chips{display:flex;gap:6px;margin:6px 0 12px;}
+  .day-chip{width:36px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--surface);
+    font-size:11.5px;font-weight:600;color:var(--muted-2);cursor:pointer;display:grid;place-items:center;}
+  .day-chip.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .al-times{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .al-times input{width:86px;border:1px solid var(--line);border-radius:9px;padding:9px;font-family:var(--mono);font-size:13px;background:var(--surface);color:var(--text);}
+  .al-times span{font-size:12px;color:var(--muted);}
+  .al-save{font-size:11.5px;color:var(--green);font-weight:600;}
+  .about-body p{font-size:13px;color:var(--text);line-height:1.6;margin-bottom:11px;}
+  .about-body .about-step{color:var(--muted);padding-left:10px;border-left:2px solid var(--line);}
+  .about-body b{font-weight:600;}
+
   /* hamburger + drawer nav */
   .burger{width:40px;height:40px;border-radius:11px;border:1px solid var(--line);background:var(--ink-2);
     display:grid;place-items:center;cursor:pointer;flex:none;color:var(--text);}
@@ -776,6 +812,15 @@
       <span class="dr-txt">Tube<span class="sub">tube, Elizabeth line, Overground, DLR, tram</span></span>
       <span class="dr-live" id="dr-live-tube"></span>
     </button>
+    <div class="dr-sep"></div>
+    <button class="dr-item" id="dr-alerts" onclick="setMode('alerts')">
+      <span class="di alerts"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+      <span class="dr-txt">Alerts<span class="sub">delay &amp; disruption notifications</span></span>
+    </button>
+    <button class="dr-item" id="dr-about" onclick="openAbout()">
+      <span class="di about"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg></span>
+      <span class="dr-txt">About<span class="sub">what this is &amp; installing it</span></span>
+    </button>
   </aside>
 
   <div id="rail-view">
@@ -878,6 +923,11 @@
     <div id="commute-stage"></div>
   </div><!-- /commute-view -->
 
+  <div id="alerts-view" hidden>
+    <div class="al-status" id="al-status"></div>
+    <div id="al-lists"></div>
+  </div><!-- /alerts-view -->
+
   <footer class="foot">
     <span id="updated">—</span>
     <div class="attrib">
@@ -971,6 +1021,32 @@
   <button class="sheet-save" id="csave" onclick="saveCommute()">Save commute</button>
   <button class="sheet-delete" id="cdelete" hidden onclick="deleteCommute()">Delete this commute</button>
   <button class="sheet-cancel" onclick="closeCommuteSheet()">Cancel</button>
+</div>
+
+<div class="scrim" id="abscrim" onclick="closeAbout()"></div>
+<div class="sheet" id="absheet" role="dialog" aria-label="About Commuter">
+  <div class="grab"></div>
+  <h2>About Commuter</h2>
+  <p class="sheet-hint">Live UK departures, built around your actual commute.</p>
+  <div class="about-body">
+    <p><b>What it is.</b> Save the journeys you really take (rail, bus, tube) and chain them into
+      commutes. Every screen shows live data: real departure boards, live tube status, and each
+      train's historic track record. When the data can't prove something, this app says so rather
+      than guessing.</p>
+    <p><b>Install it like an app.</b></p>
+    <p class="about-step"><b>iPhone / iPad:</b> open this site in Safari, tap the Share button
+      (square with an arrow), then <b>Add to Home Screen</b>. Notifications only work on iPhone
+      once it's installed this way.</p>
+    <p class="about-step"><b>Android:</b> open in Chrome, tap the menu (three dots), then
+      <b>Add to Home screen</b> (or <b>Install app</b>).</p>
+    <p class="about-step"><b>Desktop:</b> look for the install icon in the address bar.</p>
+    <p><b>Alerts.</b> Turn on notifications in the Alerts screen (menu) to hear about
+      cancellations, 5+ minute delays, and tube line problems for the journeys you choose, on the
+      days you choose.</p>
+    <p><b>Data sources.</b> Powered by National Rail Enquiries (Darwin &amp; HSP), TfL Open Data,
+      and the Bus Open Data Service. Full attribution is in the footer.</p>
+  </div>
+  <button class="sheet-cancel" onclick="closeAbout()">Close</button>
 </div>
 
 <div class="scrim" id="bscrim" onclick="cancelLegSheet('bus')"></div>
@@ -1704,6 +1780,8 @@ async function refresh(manual){
     if(curTube()) await loadTubeJourney();
   } else if(state.mode === "commute"){
     renderCommute();          // each leg fetches its own live times
+  } else if(state.mode === "alerts"){
+    /* alerts screen is config, not a live board */
   } else {
     if(state.services.length===0) showSkeleton();
     const res = await fetchBoard();
@@ -2099,6 +2177,7 @@ function applyMode(){
   document.getElementById("bus-view").hidden  = m !== "bus";
   document.getElementById("tube-view").hidden = m !== "tube";
   document.getElementById("commute-view").hidden = m !== "commute";
+  document.getElementById("alerts-view").hidden = m !== "alerts";
 
   // drawer selection + header title
   const meta = {
@@ -2106,10 +2185,12 @@ function applyMode(){
     rail:    ["Rail", "live departures"],
     bus:     ["Bus", "live arrivals"],
     tube:    ["Tube", "tube, Elizabeth, Overground, DLR, tram"],
+    alerts:  ["Alerts", "delay & disruption notifications"],
   }[m] || ["Commuter", ""];
   const t = document.getElementById("screen-title"); if(t) t.textContent = meta[0];
   const sub = document.getElementById("screen-sub"); if(sub) sub.textContent = meta[1];
-  ["commute","rail","bus","tube"].forEach(k=>{
+  if(m === "alerts") renderAlerts();
+  ["commute","rail","bus","tube","alerts"].forEach(k=>{
     const el = document.getElementById("dr-"+k);
     if(el) el.setAttribute("aria-selected", String(k===m));
   });
@@ -3974,6 +4055,302 @@ makeSheetDismissable("sheet",  ()=>cancelLegSheet("rail"));
 makeSheetDismissable("tsheet", ()=>cancelLegSheet("tube"));
 makeSheetDismissable("bsheet", ()=>cancelLegSheet("bus"));
 makeSheetDismissable("csheet", ()=>closeCommuteSheet());
+
+
+/* ============================================================
+   ALERTS — push notification management
+   Rail: cancellations and 5+ min delays on watched journeys.
+   Tube: line problems on watched journeys' lines.
+   Each watch has its own days-of-week and time window, so alerts
+   only arrive when that journey actually matters to you.
+   ============================================================ */
+
+let pushCfg = null;          // { publicKey, dbReady, vapidReady }
+let pushSub = null;          // this device's PushSubscription (if any)
+let watchRows = [];          // watches from the server for this device
+
+function urlB64ToU8(s){
+  const pad = "=".repeat((4 - (s.length % 4)) % 4);
+  const raw = atob((s + pad).replace(/-/g,"+").replace(/_/g,"/"));
+  return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)));
+}
+function isStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function isIOS(){ return /iPhone|iPad|iPod/.test(navigator.userAgent); }
+
+async function renderAlerts(){
+  const st = document.getElementById("al-status");
+  st.innerHTML = `<h3>Notifications</h3><p>Checking this device…</p>`;
+
+  // server config
+  try{
+    const r = await fetch("/api/push/config", { headers:{accept:"application/json"} });
+    pushCfg = await r.json();
+  }catch(e){ pushCfg = null; }
+
+  if(!pushCfg || !pushCfg.dbReady || !pushCfg.vapidReady || !pushCfg.publicKey){
+    st.innerHTML = `<h3>Notifications</h3>
+      <p class="al-err">Alerts aren't set up on the server yet${!pushCfg ? "" :
+        !pushCfg.dbReady ? " (no D1 database binding named DB)" :
+        " (VAPID keys missing)"}. See ALERTS-SETUP in the project files.</p>`;
+    renderWatchLists(false);
+    return;
+  }
+
+  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  if(!supported){
+    st.innerHTML = `<h3>Notifications</h3>
+      <p class="al-err">This browser doesn't support web push.</p>
+      ${isIOS() && !isStandalone() ? `<div class="al-warn-ios"><b>iPhone:</b> notifications only work after you add this app to your Home Screen (Share → Add to Home Screen), then open it from there.</div>` : ""}`;
+    renderWatchLists(false);
+    return;
+  }
+
+  // register the push-only service worker
+  try{ await navigator.serviceWorker.register("/sw.js"); }catch(e){}
+
+  const reg = await navigator.serviceWorker.ready;
+  pushSub = await reg.pushManager.getSubscription();
+  const perm = Notification.permission;
+
+  if(pushSub && perm === "granted"){
+    st.innerHTML = `<h3>Notifications</h3>
+      <p><span class="al-ok">Enabled on this device.</span> Bell a journey below and choose its days and times.</p>
+      <button class="al-btn" onclick="sendTestPush(this)">Send test notification</button>
+      <button class="al-btn" onclick="disablePush(this)">Turn off on this device</button>`;
+    await loadWatches();
+    renderWatchLists(true);
+  } else {
+    st.innerHTML = `<h3>Notifications</h3>
+      <p>Get told about cancellations, 5+ minute delays, and tube line problems for the journeys you choose, on the days you choose.</p>
+      <button class="al-btn primary" onclick="enablePush(this)">Enable notifications</button>
+      ${perm === "denied" ? `<p class="al-err" style="margin-top:10px">Notifications are blocked for this site in your browser settings; unblock them first.</p>` : ""}
+      ${isIOS() && !isStandalone() ? `<div class="al-warn-ios"><b>iPhone:</b> first add this app to your Home Screen (Share → Add to Home Screen) and open it from there — Apple only allows web push for installed apps.</div>` : ""}`;
+    renderWatchLists(false);
+  }
+}
+
+async function enablePush(btn){
+  btn.disabled = true; btn.textContent = "Asking permission…";
+  try{
+    const perm = await Notification.requestPermission();
+    if(perm !== "granted"){ renderAlerts(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    pushSub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToU8(pushCfg.publicKey),
+    });
+    const r = await fetch("/api/push/subscribe", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ subscription: pushSub.toJSON() }),
+    });
+    if(!r.ok) throw new Error("subscribe failed");
+  }catch(e){
+    console.error("enablePush:", e);
+  }
+  renderAlerts();
+}
+
+async function disablePush(btn){
+  btn.disabled = true;
+  try{ if(pushSub) await pushSub.unsubscribe(); }catch(e){}
+  pushSub = null;
+  renderAlerts();
+}
+
+async function sendTestPush(btn){
+  btn.disabled = true; const old = btn.textContent; btn.textContent = "Sending…";
+  try{
+    const r = await fetch("/api/push/test", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({ endpoint: pushSub.endpoint }),
+    });
+    const d = await r.json();
+    btn.textContent = d.ok ? "Sent — check your notifications" : `Failed (${d.status || d.error})`;
+  }catch(e){ btn.textContent = "Failed to send"; }
+  setTimeout(()=>{ btn.textContent = old; btn.disabled = false; }, 3500);
+}
+
+async function loadWatches(){
+  watchRows = [];
+  if(!pushSub) return;
+  try{
+    const r = await fetch(`/api/push/watch?endpoint=${encodeURIComponent(pushSub.endpoint)}`);
+    const d = await r.json();
+    watchRows = d.watches || [];
+  }catch(e){}
+}
+function watchFor(kind, jid){ return watchRows.find(w=>w.kind===kind && w.jid===jid) || null; }
+
+/* The lists: every saved rail journey, tube journey, and commute gets a bell.
+   Belling a commute creates a watch for each of its rail/tube legs (buses
+   have no delay feed to alert from, so bus legs are skipped, and we say so). */
+function renderWatchLists(enabled){
+  const el = document.getElementById("al-lists");
+  const bell = (on)=>`<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>`;
+
+  const dayNames = ["M","T","W","T","F","S","S"];
+  const cfgHtml = (w, key)=>{
+    const days = (w && w.days) || "1111100";
+    const chips = dayNames.map((d,i)=>
+      `<button class="day-chip ${days[i]==="1"?"on":""}" onclick="toggleDay('${key}',${i})">${d}</button>`).join("");
+    return `<div class="al-cfg">
+      <div class="lbl-cap">Days</div>
+      <div class="day-chips">${chips}</div>
+      <div class="lbl-cap">Between</div>
+      <div class="al-times">
+        <input value="${w? w.start_hm : "0630"}" maxlength="4" inputmode="numeric" id="st-${key}" onchange="saveWatchCfg('${key}')" />
+        <span>and</span>
+        <input value="${w? w.end_hm : "0930"}" maxlength="4" inputmode="numeric" id="en-${key}" onchange="saveWatchCfg('${key}')" />
+        <span class="al-save" id="sv-${key}"></span>
+      </div>
+    </div>`;
+  };
+
+  const row = (kind, jid, name, sub, grp)=>{
+    const w = watchFor(kind, jid);
+    const key = `${kind}~${jid}`;
+    rowMeta[key] = { kind, jid, name, sub, grp };
+    return `<div class="al-row ${w?"open":""}" id="row-${key}">
+      <div class="al-row-hd" onclick="document.getElementById('row-${key}').classList.toggle('open')">
+        <span class="nm">${esc(name)}<span class="sub">${esc(sub)}</span></span>
+        <button class="bell ${w?"on":""}" onclick="event.stopPropagation(); toggleBell('${key}', this)" ${enabled?"":"disabled"} aria-label="Toggle alerts">${bell(!!w)}</button>
+      </div>
+      ${cfgHtml(w, key)}
+    </div>`;
+  };
+
+  let html = "";
+  if(!enabled) html += `<p style="font-size:12px;color:var(--muted-2);margin:0 2px 12px;">Enable notifications above, then bell the journeys you care about.</p>`;
+
+  const rails = (state.journeys||[]).map(j=>row("rail", j.jid, j.name, `${shortName(j.from)} \u2192 ${shortName(j.to)} \u00b7 cancellations & 5+ min delays`)).join("");
+  if(rails) html += `<div class="al-group"><div class="lbl-cap">Rail journeys</div>${rails}</div>`;
+
+  const tubes = (state.tubeJourneys||[]).map(j=>{
+    const lines = (j.lines||[]).map(l=>(TUBE_LINES[l]&&TUBE_LINES[l].n)||l).join(", ");
+    return row("tube", j.jid, j.name, `${lines||"lines resolved on first open"} \u00b7 line problems`);
+  }).join("");
+  if(tubes) html += `<div class="al-group"><div class="lbl-cap">Tube journeys</div>${tubes}</div>`;
+
+  const comms = (state.commutes||[]).map(c=>{
+    const alertable = (c.legs||[]).filter(l=>l.mode!=="bus").length;
+    const buses = (c.legs||[]).filter(l=>l.mode==="bus").length;
+    if(!alertable) return "";
+    return row("commute", c.jid || c.name, c.name,
+      `${alertable} alertable leg${alertable>1?"s":""}${buses?` \u00b7 bus legs skipped (no delay feed)`:""}`);
+  }).join("");
+  if(comms) html += `<div class="al-group"><div class="lbl-cap">Commutes</div>${comms}</div>`;
+
+  if(!rails && !tubes && !comms){
+    html += `<p style="font-size:12.5px;color:var(--muted);">No saved journeys yet. Save rail or tube journeys first, then bell them here.</p>`;
+  }
+  el.innerHTML = html;
+}
+let rowMeta = {};
+
+/* Toggling a bell creates or deletes the watch(es). A commute bell fans out to
+   one watch per alertable leg, tagged with the commute as its group. */
+async function toggleBell(key, btn){
+  const meta = rowMeta[key];
+  if(!meta || !pushSub) return;
+  btn.disabled = true;
+  const existing = meta.kind==="commute"
+    ? watchRows.filter(w=>w.grp===meta.jid)
+    : (watchFor(meta.kind, meta.jid) ? [watchFor(meta.kind, meta.jid)] : []);
+
+  try{
+    if(existing.length){
+      for(const w of existing){
+        await postWatch({ kind:w.kind, jid:w.jid, delete:true });
+      }
+    } else {
+      const days = readDays(key), start = readHM(`st-${key}`,"0630"), end = readHM(`en-${key}`,"0930");
+      for(const w of buildWatches(meta)){
+        await postWatch({ ...w, days, start, end });
+      }
+    }
+    await loadWatches();
+    renderWatchLists(true);
+  }catch(e){ console.error("toggleBell:", e); btn.disabled = false; }
+}
+
+/* What does a bell on this row actually watch? */
+function buildWatches(meta){
+  if(meta.kind==="rail"){
+    const j = (state.journeys||[]).find(x=>x.jid===meta.jid);
+    return j ? [{ kind:"rail", jid:j.jid, label:j.name, a:j.from, b:j.to }] : [];
+  }
+  if(meta.kind==="tube"){
+    const j = (state.tubeJourneys||[]).find(x=>x.jid===meta.jid);
+    return j ? [{ kind:"tube", jid:j.jid, label:j.name, lines:(j.lines||[]).join(",") }] : [];
+  }
+  if(meta.kind==="commute"){
+    const c = (state.commutes||[]).find(x=>(x.jid||x.name)===meta.jid);
+    if(!c) return [];
+    const out = [];
+    for(const leg of c.legs||[]){
+      const j = resolveLeg(leg);
+      if(!j) continue;
+      if(leg.mode==="rail") out.push({ kind:"rail", jid:j.jid, grp:meta.jid, label:`${c.name}: ${j.name}`, a:j.from, b:j.to });
+      if(leg.mode==="tube") out.push({ kind:"tube", jid:j.jid, grp:meta.jid, label:`${c.name}: ${j.name}`, lines:(j.lines||[]).join(",") });
+    }
+    return out;
+  }
+  return [];
+}
+
+async function postWatch(w){
+  return fetch("/api/push/watch", {
+    method:"POST", headers:{"content-type":"application/json"},
+    body: JSON.stringify({ ...w, endpoint: pushSub.endpoint }),
+  });
+}
+
+function readDays(key){
+  const chips = document.querySelectorAll(`#row-${CSS.escape(key)} .day-chip`);
+  let d = "";
+  chips.forEach(c=>d += c.classList.contains("on") ? "1" : "0");
+  return /^[01]{7}$/.test(d) ? d : "1111100";
+}
+function readHM(id, dflt){
+  const v = (document.getElementById(id)||{}).value || "";
+  return /^\d{4}$/.test(v) ? v : dflt;
+}
+function toggleDay(key, i){
+  const chips = document.querySelectorAll(`#row-${CSS.escape(key)} .day-chip`);
+  chips[i].classList.toggle("on");
+  saveWatchCfg(key);
+}
+/* Editing days/times re-saves every watch behind this row (if belled). */
+async function saveWatchCfg(key){
+  const meta = rowMeta[key];
+  if(!meta || !pushSub) return;
+  const belled = meta.kind==="commute"
+    ? watchRows.some(w=>w.grp===meta.jid)
+    : !!watchFor(meta.kind, meta.jid);
+  if(!belled) return;                    // config applies when the bell goes on
+  const days = readDays(key), start = readHM(`st-${key}`,"0630"), end = readHM(`en-${key}`,"0930");
+  for(const w of buildWatches(meta)){
+    await postWatch({ ...w, days, start, end });
+  }
+  await loadWatches();
+  const sv = document.getElementById(`sv-${key}`);
+  if(sv){ sv.textContent = "\u2713 saved"; setTimeout(()=>sv.textContent="", 1800); }
+}
+
+/* ---- about sheet ---- */
+function openAbout(){
+  closeDrawer();
+  document.getElementById("abscrim").classList.add("open");
+  document.getElementById("absheet").classList.add("open");
+}
+function closeAbout(){
+  document.getElementById("abscrim").classList.remove("open");
+  document.getElementById("absheet").classList.remove("open");
+}
+
+makeSheetDismissable("absheet", ()=>closeAbout());
 
 applyMode();
 tick();
