@@ -118,6 +118,24 @@
       real tracking, not a timetable comparison.</div>
   </div>
   <div class="card">
+    <h2>7 · Historic reliability (HSP)</h2>
+    <p>A train's track record over the past ~3 months. Set <code>HSP_KEY</code> (the RDM <b>consumer</b> key)
+       and <code>HSP_URL</code> (endpoint base from the product's Specification tab) in Cloudflare, Production + Preview.
+       Legacy <code>HSP_USER</code>/<code>HSP_PASS</code> also still works. <b>Raw</b> shows the route used and exactly what HSP returned.</p>
+    <div class="row">
+      <input id="hfrom" placeholder="from CRS" value="NBT" />
+      <input id="hto" placeholder="to CRS" value="WAT" />
+      <input id="hstd" placeholder="std e.g. 0712" value="0712" style="max-width:120px" />
+    </div>
+    <div class="row">
+      <button onclick="go(`/api/hsp?from=${hfrom.value}&to=${hto.value}&std=${hstd.value}`,'s7')">Run</button>
+      <button class="alt" onclick="go(`/api/hsp?debug=1&from=${hfrom.value}&to=${hto.value}&std=${hstd.value}`,'s7')">Raw</button>
+    </div>
+    <pre id="s7">—</pre>
+    <div class="hint">If <code>available:false</code>, the reason field says why (key missing, URL missing, auth failed, or timed out).
+      <code>sample</code> is how many past trains the percentages are based on.</div>
+  </div>
+  <div class="card">
     <h2>8 · National buses (BODS)</h2>
     <p>Live bus positions outside London. Needs <code>BODS_KEY</code> in Cloudflare
        (free from data.bus-data.dft.gov.uk, Account &rarr; API key). <b>Raw</b> shows a sample of the SIRI XML.</p>
