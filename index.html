@@ -308,6 +308,8 @@
     transform:translateY(102%);transition:transform .3s cubic-bezier(.22,.61,.36,1);max-height:88vh;overflow-y:auto;}
   .sheet.open{transform:translateY(0);}
   .grab{width:38px;height:4px;border-radius:3px;background:var(--line);margin:6px auto 14px;}
+  .sheet .grab, .sheet h2, .sheet .sheet-hint{touch-action:none;}
+  .sheet.dragging{transition:none;}
   .sheet h2{font-family:var(--display);font-size:19px;font-weight:600;margin-bottom:4px;}
   .sheet-hint{font-size:12.5px;color:var(--muted);margin-bottom:16px;}
   .fld{margin-bottom:12px;}
@@ -3891,6 +3893,54 @@ function monthsBetween(a,b){
     const svg = ptr.querySelector("svg"); if(svg) svg.style.transform = "rotate(0deg)";
   }
 })();
+
+
+/* ---- swipe-down to dismiss the bottom sheets ----
+   The grab handle has always LOOKED draggable; now it is. Drag starts from the
+   sheet's header zone (handle, title, hint) so it never fights the scrollable
+   pickers below. Past the threshold, the sheet animates off and the same
+   cancel path as the Cancel button runs, so commute-leg state stays correct. */
+function makeSheetDismissable(sheetId, cancelFn){
+  const sheet = document.getElementById(sheetId);
+  if(!sheet) return;
+  let startY = 0, dy = 0, active = false;
+
+  sheet.addEventListener("pointerdown", (e)=>{
+    if(!sheet.classList.contains("open")) return;
+    // header zone only: the grab, the h2, the hint, or the top 56px
+    const zone = e.target.closest(".grab, h2, .sheet-hint");
+    const rect = sheet.getBoundingClientRect();
+    if(!zone && (e.clientY - rect.top) > 56) return;
+    startY = e.clientY; dy = 0; active = true;
+    sheet.classList.add("dragging");
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp, { once:true });
+  });
+
+  function onMove(e){
+    if(!active) return;
+    dy = Math.max(0, e.clientY - startY);          // only downward
+    sheet.style.transform = `translateY(${dy}px)`;
+  }
+  function onUp(){
+    window.removeEventListener("pointermove", onMove);
+    sheet.classList.remove("dragging");
+    const threshold = Math.min(140, sheet.offsetHeight * 0.25);
+    if(dy > threshold){
+      // let the CSS transition carry it off from where the finger left it
+      sheet.style.transform = "";
+      cancelFn();                                   // removes .open -> slides down
+    } else {
+      sheet.style.transform = "";                   // spring back
+    }
+    active = false; dy = 0;
+  }
+}
+
+makeSheetDismissable("sheet",  ()=>cancelLegSheet("rail"));
+makeSheetDismissable("tsheet", ()=>cancelLegSheet("tube"));
+makeSheetDismissable("bsheet", ()=>cancelLegSheet("bus"));
+makeSheetDismissable("csheet", ()=>closeCommuteSheet());
 
 applyMode();
 tick();
