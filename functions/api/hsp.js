@@ -5,13 +5,18 @@
  * HSP (Historic Service Performance) feed. Answers "how often does the 07:12
  * actually run on time?" using up to ~3 months of past weekday data.
  *
- * WHY A SERVER FUNCTION: HSP is POST-only, needs HTTP Basic auth, and sends no
- * CORS headers — so it can't be called from the browser. It also uses your
- * National Rail Data Portal login (NOT the RDM consumer key the live board
- * uses). Set these as Cloudflare env vars:
- *     HSP_USER  — your portal email
- *     HSP_PASS  — your portal password
- * and tick the "HSP" subscription box on the portal.
+ * WHY A SERVER FUNCTION: HSP is POST-only and sends no CORS headers, so it
+ * can't be called from the browser.
+ *
+ * AUTH — two routes, RDM preferred:
+ *   1. Rail Data Marketplace (current): subscribe to the "Historical Service
+ *      Performance (HSP)" product, then set in Cloudflare (Prod + Preview):
+ *        HSP_KEY — the product's CONSUMER KEY (x-apikey, like the Darwin feeds)
+ *        HSP_URL — the endpoint base from the product's Specification tab,
+ *                  e.g. https://api1.raildata.org.uk/<hsp-product-slug>
+ *      We POST to  {HSP_URL}/api/v1/serviceMetrics
+ *   2. Legacy National Rail Data Portal: HSP_USER / HSP_PASS (Basic auth to
+ *      hsp-prod.rockshore.net) still works if that's what you have.
  *
  * WHAT IT REPORTS: on-time and within-5/10-minute rates plus the SAMPLE SIZE,
  * straight from serviceMetrics. We deliberately don't claim a cancellation
@@ -30,8 +35,12 @@ export async function onRequestGet({ request, env }) {
   const debug = url.searchParams.get("debug");
 
   if (!from || !to) return json({ error: "Need from and to CRS codes." }, 400);
-  if (!env.HSP_USER || !env.HSP_PASS) {
-    return json({ available: false, reason: "HSP not configured (no HSP_USER / HSP_PASS)." }, 200);
+  const rdm = !!env.HSP_KEY;
+  if (!rdm && (!env.HSP_USER || !env.HSP_PASS)) {
+    return json({ available: false, reason: "HSP not configured. Set HSP_KEY (+ HSP_URL) from Rail Data Marketplace, or legacy HSP_USER/HSP_PASS." }, 200);
+  }
+  if (rdm && !env.HSP_URL) {
+    return json({ available: false, reason: "HSP_KEY is set but HSP_URL is missing. Copy the endpoint base from the HSP product's Specification tab on raildata.org.uk." }, 200);
   }
 
   // Edge-cache: a service's historic reliability barely moves day to day, and
@@ -59,14 +68,19 @@ export async function onRequestGet({ request, env }) {
   };
 
   let raw;
+  const endpoint = rdm
+    ? `${env.HSP_URL.replace(/\/+$/, "")}/api/v1/serviceMetrics`
+    : "https://hsp-prod.rockshore.net/api/v1/serviceMetrics";
+  const headers = rdm
+    ? { "content-type": "application/json", "x-apikey": env.HSP_KEY }
+    : { "content-type": "application/json", authorization: "Basic " + btoa(`${env.HSP_USER}:${env.HSP_PASS}`) };
   try {
-    const auth = "Basic " + btoa(`${env.HSP_USER}:${env.HSP_PASS}`);
-    const r = await fetch("https://hsp-prod.rockshore.net/api/v1/serviceMetrics", {
+    const r = await fetch(endpoint, {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: auth },
+      headers,
       body: JSON.stringify(body),
     });
-    if (r.status === 401) return json({ available: false, reason: "HSP auth failed — check credentials and that the HSP box is ticked on the portal." }, 200);
+    if (r.status === 401 || r.status === 403) return json({ available: false, reason: `HSP auth failed (${r.status}). ${rdm ? "Check HSP_KEY is the CONSUMER key and the subscription is active." : "Check credentials and the HSP box on the portal."}` }, 200);
     if (r.status === 502 || r.status === 504) return json({ available: false, reason: "HSP timed out (window too wide)." }, 200);
     if (!r.ok) return json({ available: false, reason: `HSP error ${r.status}.` }, 200);
     raw = await r.json();
@@ -74,7 +88,7 @@ export async function onRequestGet({ request, env }) {
     return json({ available: false, reason: "Couldn't reach HSP." }, 200);
   }
 
-  if (debug) return json({ debug: "hsp", sent: body, raw });
+  if (debug) return json({ debug: "hsp", route: rdm ? "rdm-x-apikey" : "legacy-basic", endpoint, sent: body, raw });
 
   const services = (raw.Services || []).map(summarise).filter(Boolean);
 
