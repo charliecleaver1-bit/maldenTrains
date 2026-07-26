@@ -96,11 +96,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 20px; letter-spac
 .hub-tile-sub { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
 
 /* ---- live lookup ---- */
-#lookup-body { padding: 18px 20px; }
-.btn-ghost-sm {
-  background: var(--surface-2); color: var(--ink-soft); border: none; border-radius: var(--r-sm);
-  padding: 8px 12px; font-size: 12.5px; font-weight: 600; margin-top: 4px;
-}
+.btn-ghost-sm { background: var(--surface-2); color: var(--ink-soft); border: none; border-radius: var(--r-sm); padding: 8px 12px; font-size: 12.5px; font-weight: 600; margin-top: 4px; }
 .btn-ghost-sm:active { background: var(--line); }
 
 /* ---- buttons ---- */

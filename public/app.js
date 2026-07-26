@@ -761,6 +761,7 @@ function openLegDetail(leg) {
     <p class="hint" style="margin-bottom:18px">${esc(titleFor(leg))}</p>
     ${disruptionBlock}
     ${crowdLine}
+    ${board._error ? `<div class="detail-alert bad">Couldn't load live times: ${esc(board._error)}</div>` : ""}
     ${svcs.length ? svcs.map((s) => {
       const big = isRail ? (s.std || s.estimated || "") : (s.countdown != null ? (s.countdown <= 1 ? "Due" : s.countdown + " min") : "");
       // Both rail and tube rows are expandable now — rail loads a full calling-point
@@ -1222,14 +1223,20 @@ function updateLookupGoButton() { el("lookup-savebar").hidden = !lookupComplete(
 // crowding, everything, for free.
 async function showLookupResult(leg, backTarget) {
   legBackTarget = backTarget || "mode-hub";
-  if (leg.mode === "tube" && leg.tubeDir === undefined) await resolveTubeDirections([leg]);
-  if (leg.mode === "rail" && leg.expectedVia === undefined) {
-    const result = await checkDirect(leg.from_id, leg.to_id);
-    leg.expectedVia = result.via || null;
+  try {
+    if (leg.mode === "tube" && leg.tubeDir === undefined) await resolveTubeDirections([leg]);
+    if (leg.mode === "rail" && leg.expectedVia === undefined) {
+      const result = await checkDirect(leg.from_id, leg.to_id);
+      leg.expectedVia = result.via || null;
+    }
+    rememberLastSearch(leg);
+    boards[leg.id] = await fetchBoard(leg);
+  } catch (e) {
+    // Whatever failed — direction/via resolution, the board fetch itself — still land
+    // on the results screen with a real error rather than silently doing nothing,
+    // which previously looked exactly like "nothing comes back" with no explanation.
+    boards[leg.id] = { services: [], _error: e.message || "network error" };
   }
-  rememberLastSearch(leg);
-  try { boards[leg.id] = await fetchBoard(leg); }
-  catch (e) { boards[leg.id] = { services: [], _error: e.message || "network error" }; }
   openLegDetail(leg);
   wireLegSaveToggle(leg);
 }
@@ -1280,12 +1287,18 @@ document.querySelectorAll("[data-landing]").forEach((b) => b.onclick = () => {
   openModeHub(m);
 });
 el("btn-modehub-back").onclick = () => openLanding();
+el("btn-home-back").onclick = () => { stopAutoRefresh(); openLanding(); };
 el("btn-hub-live").onclick = () => openLookup(currentMode, "mode-hub");
 el("btn-hub-saved").onclick = () => openSavedList(currentMode);
 el("btn-savedlist-back").onclick = () => openModeHub(currentMode);
 el("btn-saved-add").onclick = () => openLookup(currentMode, "saved-list");
 el("btn-lookup-back").onclick = () => { if (lookupBackTarget === "saved-list") openSavedList(currentMode); else openModeHub(currentMode); };
-el("btn-lookup-go").onclick = () => showLookupResult(lookupLeg, lookupBackTarget === "saved-list" ? "saved-list" : "mode-hub");
+el("btn-lookup-go").onclick = async () => {
+  const btn = el("btn-lookup-go");
+  btn.disabled = true; const original = btn.textContent; btn.textContent = "Checking…";
+  try { await showLookupResult(lookupLeg, lookupBackTarget === "saved-list" ? "saved-list" : "mode-hub"); }
+  finally { btn.disabled = false; btn.textContent = original; }
+};
 
 el("btn-create").onclick = () => { if (!commute.legs.length) commute.legs.push(newLeg()); renderSetup(); };
 el("btn-edit").onclick = () => renderSetup();
