@@ -1,48 +1,98 @@
-// GET /api/tube/crowding?stop=940GZZLUWLO
-//
-// Proxies TfL's near-real-time crowding data: "busyness at a station level, calculated
-// every 5 minutes, as a fraction of the busiest the station has been since data
-// collection began" (per TfL's own description). Not every station has live data —
-// TfL's /crowding/{id}/Live returns isFound:false for stations it doesn't cover.
-//
-// TfL's exact field naming for this endpoint isn't published in stable docs (their
-// historical-profile endpoint uses `percentageOfBaseLine`, unusual capitalisation) so
-// this checks a couple of likely spellings defensively rather than assuming one and
-// silently showing nothing (or garbage) if it's wrong.
-//
-// Returns { percentage: number|null } — null means "no data for this station right now",
-// which the frontend just doesn't display rather than showing a wrong number.
+/**
+ * GET /api/tube/crowding?stop=940GZZLUOXC
+ *
+ * How busy a station is right now. TfL recalculates this every ~5 minutes and
+ * expresses it as a fraction of the busiest that station has ever been (since
+ * data collection started in 2019) — so it's a RELATIVE measure, not a head
+ * count. We label it that way rather than implying we know how many people are
+ * on the platform.
+ *
+ * Not every station has data (Kensington Olympia, Heathrow T5 and Willesden
+ * Junction are excluded, and Monument is reported as Bank). Where there's no
+ * data we say so instead of guessing.
+ *
+ * Debug: ?debug=1 -> raw TfL payloads (live + typical).
+ */
 
-const TFL = "https://api.tfl.gov.uk";
-const auth = (env) => (env.TFL_APP_KEY ? `?app_key=${env.TFL_APP_KEY}` : "");
+export async function onRequestGet({ request, env }) {
+  const url = new URL(request.url);
+  const stop = (url.searchParams.get("stop") || "").trim();
+  const debug = url.searchParams.get("debug");
+  if (!stop) return json({ error: "Need a stop id." }, 400);
 
-function json(obj, status = 200, extra = {}) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", ...extra },
-  });
+  const [live, typical] = await Promise.all([
+    getJson(`https://api.tfl.gov.uk/crowding/${encodeURIComponent(stop)}/Live` + keyQS(env), env),
+    getJson(`https://api.tfl.gov.uk/crowding/${encodeURIComponent(stop)}` + keyQS(env), env),
+  ]);
+
+  if (debug) return json({ debug: "crowding", stop, live, typical });
+
+  // Live: a fraction of this station's own record high.
+  const pct = live && typeof live.percentageOfBaseline === "number"
+    ? live.percentageOfBaseline
+    : null;
+
+  const dataAvailable = live ? live.dataAvailable !== false : false;
+
+  return json(
+    {
+      stop,
+      available: pct !== null && dataAvailable,
+      percent: pct === null ? null : Math.round(pct * 100),
+      level: levelOf(pct),
+      label: labelOf(pct),
+      typicalNow: typicalNow(typical),
+    },
+    200,
+    { "cache-control": "public, max-age=120, s-maxage=120" }
+  );
 }
 
-export async function onRequest(context) {
-  const { env } = context;
-  const url = new URL(context.request.url);
-  const stop = url.searchParams.get("stop");
-  if (!stop) return json({ error: "Missing 'stop'" }, 400);
+/* Buckets. These are judgement calls on a relative scale, so the wording stays
+   qualitative ("fairly busy") rather than pretending to precision. */
+function levelOf(p) {
+  if (p === null) return null;
+  if (p < 0.2) return "quiet";
+  if (p < 0.45) return "moderate";
+  if (p < 0.7) return "busy";
+  return "packed";
+}
+function labelOf(p) {
+  const l = levelOf(p);
+  return { quiet: "Quiet", moderate: "Fairly quiet", busy: "Busy", packed: "Very busy" }[l] || null;
+}
 
+/* The typical profile for right now — useful context for "is this normal?". */
+function typicalNow(t) {
   try {
-    const r = await fetch(`${TFL}/crowding/${encodeURIComponent(stop)}/Live${auth(env)}`, { headers: { Accept: "application/json" } });
-    if (!r.ok) return json({ percentage: null }, 200, { "Cache-Control": "public, max-age=120" });
-    const d = await r.json();
-    if (d.isFound === false) return json({ percentage: null }, 200, { "Cache-Control": "public, max-age=120" });
+    if (!t || !Array.isArray(t.daysOfWeek)) return null;
+    const now = new Date();
+    const day = now.toLocaleDateString("en-GB", { weekday: "long", timeZone: "Europe/London" });
+    const band = t.daysOfWeek.find((d) => (d.dayOfWeek || "").toLowerCase() === day.toLowerCase());
+    if (!band || !Array.isArray(band.timeBands)) return null;
 
-    const raw = d.percentageOfBaseLine ?? d.percentageOfBaseline ?? d.percentage ?? null;
-    if (raw == null || typeof raw !== "number") return json({ percentage: null }, 200, { "Cache-Control": "public, max-age=120" });
-    // TfL's historical-profile endpoint expresses this as a 0-1 fraction; guard in case
-    // the live endpoint instead returns an already-scaled percentage.
-    const percentage = Math.round(raw <= 1.5 ? raw * 100 : raw);
+    const hh = now.toLocaleTimeString("en-GB", { hour: "2-digit", hour12: false, timeZone: "Europe/London" });
+    const hit = band.timeBands.find((b) => String(b.timeBand || "").startsWith(hh));
+    if (!hit || typeof hit.percentageOfBaseLine !== "number") return null;
 
-    return json({ percentage }, 200, { "Cache-Control": "public, max-age=120" });
-  } catch (e) {
-    return json({ percentage: null }, 200);
-  }
+    return { percent: Math.round(hit.percentageOfBaseLine * 100), band: hit.timeBand };
+  } catch (e) { return null; }
+}
+
+async function getJson(u, env) {
+  try {
+    const r = await fetch(u, { headers: { accept: "application/json" } });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+function keyQS(env) {
+  return env.TFL_APP_KEY ? `?app_key=${encodeURIComponent(env.TFL_APP_KEY)}` : "";
+}
+
+function json(body, status = 200, extra = {}) {
+  return new Response(JSON.stringify(body), {
+    status, headers: { "content-type": "application/json; charset=utf-8", ...extra },
+  });
 }
