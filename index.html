@@ -231,6 +231,12 @@
     font-family:var(--display);font-size:12.5px;font-weight:600;outline:none;width:140px;max-width:100%;}
   .jrn-pill.add{color:var(--amber);border-style:dashed;padding:8px 14px;flex:0 0 auto;}
 
+  .home-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .home-tile{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:14px;
+    padding:18px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;cursor:pointer;
+    font-family:var(--display);font-weight:500;font-size:15px;color:var(--text);transition:border-color .15s,transform .12s;}
+  .home-tile:active{transform:scale(.97);}
+  .home-tile:hover{border-color:var(--muted-2);}
   .jrn-empty{background:var(--ink-2);border:1px dashed var(--line);border-radius:14px;padding:20px 18px;
     margin-bottom:14px;font-size:13px;color:var(--muted);line-height:1.6;}
   .jrn-empty b{color:var(--text);font-weight:600;}
@@ -763,12 +769,12 @@
     <button class="burger" id="burger" onclick="openDrawer()" aria-label="Menu">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
-    <div class="tile" aria-hidden="true">
+    <button class="tile" style="border:0;cursor:pointer" onclick="setMode('home')" aria-label="Home">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="6" cy="6" r="2.4"/><circle cx="18" cy="18" r="2.4"/>
         <path d="M6 8.4v3.2a3 3 0 0 0 3 3h4.5a3 3 0 0 1 0 6"/><path d="M18 15.6V12"/>
       </svg>
-    </div>
+    </button>
     <div class="brand">
       <h1 id="screen-title">Commuter</h1>
       <p id="screen-sub">Live departures · New Malden</p>
@@ -791,6 +797,11 @@
   <div class="scrim" id="nav-scrim" onclick="closeDrawer()"></div>
   <aside class="drawer" id="drawer" aria-label="Navigation">
     <div class="dr-hd"><h2>Commuter</h2></div>
+    <button class="dr-item" id="dr-home" onclick="setMode('home')">
+      <span class="di commute"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg></span>
+      <span class="dr-txt">Home</span>
+    </button>
+    <div class="dr-sep"></div>
     <button class="dr-item" id="dr-commute" aria-selected="true" onclick="setMode('commute')">
       <span class="di commute"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M6 8.2v3.4a3 3 0 0 0 3 3h4.5a3 3 0 0 1 0 6"/></svg></span>
       <span class="dr-txt">Commutes</span>
@@ -823,7 +834,39 @@
     </button>
   </aside>
 
-  <div id="rail-view">
+  <div id="home-view">
+    <div class="lbl-cap">Where to</div>
+    <div class="home-grid">
+      <button class="home-tile" onclick="setMode('rail')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#0E5C54" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="12" height="12" rx="2"/><path d="M6 11h12M9 20l-2 2M15 20l2 2"/></svg>
+        <span>Rail</span>
+      </button>
+      <button class="home-tile" onclick="setMode('tube')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C0392B" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M4 12h16" stroke-linecap="round"/></svg>
+        <span>Tube</span>
+      </button>
+      <button class="home-tile" onclick="setMode('bus')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C15F3C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 16V6.5C5 5 6 4.5 7.5 4.5h9C18 4.5 19 5 19 6.5V16"/><path d="M4 16h16"/><path d="M5 11.5h14"/><circle cx="8" cy="16" r="1.3" fill="#C15F3C" stroke="none"/><circle cx="16" cy="16" r="1.3" fill="#C15F3C" stroke="none"/></svg>
+        <span>Bus</span>
+      </button>
+      <button class="home-tile" onclick="setMode('commute')">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#5E6E76" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M6 8.2v3.4a3 3 0 0 0 3 3h4.5a3 3 0 0 1 0 6"/></svg>
+        <span>Commute</span>
+      </button>
+    </div>
+  </div><!-- /home-view -->
+
+  <div id="rail-view" hidden>
+  <div class="lbl-cap">Search live trains</div>
+  <div class="fld"><div id="live-from-slot"></div></div>
+  <div class="swap-row">
+    <button type="button" class="swap-btn" onclick="swapLiveRail()" title="Swap start and destination" aria-label="Swap start and destination">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7M7 4l3 3"/><path d="M17 20V7M17 20l3-3M17 20l-3-3"/></svg>
+    </button>
+  </div>
+  <div class="fld"><div id="live-to-slot"></div></div>
+  <button class="act-primary" id="live-rail-go" disabled onclick="goLiveRail()" style="width:100%;margin:4px 0 18px;padding:12px;text-align:center">Show live trains</button>
+
   <div class="lbl-cap">Your journeys</div>
   <div class="jrn-switch" id="jrn-switch"></div>
 
@@ -860,7 +903,21 @@
   </div><!-- /rail-view -->
 
   <div id="bus-view" hidden>
-    <div class="lbl-cap">Your bus stops</div>
+    <div class="lbl-cap">Find live arrivals</div>
+    <button class="loc-btn" id="lb-loc-btn" onclick="findByLocation(true)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg>
+      Use my location
+    </button>
+    <div class="divider">or enter a postcode</div>
+    <div class="pc-field">
+      <span class="plabel">Postcode</span>
+      <input type="text" id="lb-pc-input" spellcheck="false" placeholder="SW1A 1AA" aria-label="Postcode" onkeydown="if(event.key==='Enter')findByPostcode(true)" />
+      <button class="act-primary" onclick="findByPostcode(true)">Search</button>
+    </div>
+    <div class="finder-msg" id="lb-finder-msg"></div>
+    <div class="results" id="lb-bus-results"></div>
+
+    <div class="lbl-cap" style="margin-top:18px">Your bus stops</div>
     <div class="jrn-switch" id="stop-switch"></div>
 
     <div class="jrn-empty" id="bus-empty" hidden>
@@ -891,6 +948,16 @@
     <div class="tstatus-panel" id="tstatus-panel">
       <div class="tlines" id="tlines"></div>
     </div>
+
+    <div class="lbl-cap">Search live trains</div>
+    <div class="fld"><div id="t-live-from-slot"></div></div>
+    <div class="swap-row">
+      <button type="button" class="swap-btn" onclick="swapLiveTube()" title="Swap start and destination" aria-label="Swap start and destination">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7M7 4l3 3"/><path d="M17 20V7M17 20l3-3M17 20l-3-3"/></svg>
+      </button>
+    </div>
+    <div class="fld"><div id="t-live-to-slot"></div></div>
+    <button class="act-primary" id="live-tube-go" disabled onclick="goLiveTube()" style="width:100%;margin:4px 0 18px;padding:12px;text-align:center">Show live trains</button>
 
     <div class="lbl-cap">Your tube journeys</div>
     <div class="jrn-switch" id="tube-switch"></div>
@@ -1120,11 +1187,20 @@ let state = {
   commutes: [],         // [{name, legs:[{mode, jid}]}]  — jid points at a saved journey
   commuteIdx: 0,
   commuteEditIdx: null,
+  railLiveActive: false,   // showing the ad-hoc live search pair instead of a saved journey
+  railLive: { from:null, to:null },
+  tubeLiveActive: false,
+  tubeLive: { from:null, to:null },
+  busLiveActive: false,
+  liveBusStop: null,
 };
 
-/* The journey currently being shown. */
+/* The journey currently being shown — either the live search pair, or the
+   selected saved journey. */
 function curJourney(){
-  const j = state.journeys[state.jrnIdx] || null;
+  const j = (state.railLiveActive && state.railLive.from && state.railLive.to)
+    ? state.railLive
+    : (state.journeys[state.jrnIdx] || null);
   if(!j) return { from:null, to:null, listTitle:"" };
   return { from:j.from, to:j.to, listTitle:`Later trains to ${shortName(j.to)}` };
 }
@@ -1782,6 +1858,8 @@ async function refresh(manual){
     renderCommute();          // each leg fetches its own live times
   } else if(state.mode === "alerts"){
     /* alerts screen is config, not a live board */
+  } else if(state.mode === "home"){
+    /* picker screen — nothing to fetch */
   } else {
     if(state.services.length===0) showSkeleton();
     const res = await fetchBoard();
@@ -1836,7 +1914,11 @@ function flagMissing(inputId){
 /* ---- saved journeys: switch, swap, rename, add, remove ---- */
 
 function setJourney(i){
-  if(i === state.jrnIdx || !state.journeys[i]) return;
+  if(!state.journeys[i]) return;
+  const wasLive = state.railLiveActive;
+  state.railLiveActive = false;
+  saveLocal("railLiveActive", false);
+  if(i === state.jrnIdx && !wasLive) return;
   state.jrnIdx = i;
   state.services = [];
   state.expandedId = null;
@@ -1845,8 +1927,20 @@ function setJourney(i){
   refresh(false);
 }
 
-/* Reverse the current leg — one saved journey covers both directions. */
+/* Reverse the current leg — one saved journey covers both directions
+   (or, if a live search is showing, reverses that pair instead). */
 function swapJourney(){
+  if(state.railLiveActive && state.railLive.from && state.railLive.to){
+    const from = state.railLive.from;
+    state.railLive.from = state.railLive.to;
+    state.railLive.to = from;
+    saveLocal("railLiveStations", state.railLive);
+    state.services = [];
+    state.expandedId = null;
+    render();
+    refresh(false);
+    return;
+  }
   const j = state.journeys[state.jrnIdx];
   if(!j) return;
   const from = j.from;
@@ -1887,7 +1981,9 @@ function editJourney(i, ev){
 /* The From -> To header above the board. */
 function paintLeg(){
   const leg = document.getElementById("leg");
-  const j = state.journeys[state.jrnIdx];
+  const j = (state.railLiveActive && state.railLive.from && state.railLive.to)
+    ? state.railLive
+    : state.journeys[state.jrnIdx];
   const empty = document.getElementById("jrn-empty");
   if(leg) leg.hidden = !j;
   if(empty) empty.hidden = !!j;
@@ -2004,6 +2100,82 @@ function checkJourney(){
     jrnPick.checked = null;
     setJourneyNote("");
   }
+}
+
+/* ---- inline live rail search (top of Rail view; no save step) ---- */
+let liveRailPick = { from:null, to:null };
+
+function initLiveRail(){
+  const saved = readLocal("railLiveStations");
+  if(saved && saved.from && saved.to){
+    liveRailPick = { from:{ c:saved.from, n:stationName(saved.from) }, to:{ c:saved.to, n:stationName(saved.to) } };
+  }
+  fillLiveRailSlot("from"); fillLiveRailSlot("to"); checkLiveRail();
+}
+
+function fillLiveRailSlot(which){
+  const el = document.getElementById("live-"+which+"-slot");
+  if(!el) return;
+  const p = liveRailPick[which];
+  if(p){
+    el.innerHTML = `<div class="picked">${esc(p.n)} <span class="crs">${esc(p.c)}</span>
+      <button onclick="clearLiveRailPick('${which}')">change</button></div>`;
+  } else {
+    el.innerHTML = `<input placeholder="Search station\u2026" autocomplete="off" oninput="searchLiveRailStations('${which}',this.value)" />
+      <div class="st-results" id="live-${which}-res"></div>`;
+  }
+}
+function clearLiveRailPick(which){ liveRailPick[which] = null; fillLiveRailSlot(which); checkLiveRail(); }
+
+function swapLiveRail(){
+  if(!liveRailPick.from && !liveRailPick.to) return;
+  [liveRailPick.from, liveRailPick.to] = [liveRailPick.to, liveRailPick.from];
+  fillLiveRailSlot("from"); fillLiveRailSlot("to");
+  checkLiveRail();
+}
+
+function searchLiveRailStations(which, q){
+  const res = document.getElementById("live-"+which+"-res");
+  if(!res) return;
+  q = (q||"").trim().toLowerCase();
+  if(q.length < 2){ res.innerHTML = ""; return; }
+  const starts = [], contains = [];
+  for(const s of STATIONS){
+    const n = s.n.toLowerCase();
+    if(n.startsWith(q) || s.c.toLowerCase() === q) starts.push(s);
+    else if(n.includes(q)) contains.push(s);
+    if(starts.length >= 8) break;
+  }
+  const hits = starts.concat(contains).slice(0, 8);
+  res.innerHTML = hits.length
+    ? hits.map(s=>`<button class="st-row" onclick="chooseLiveRailPick('${which}','${s.c}')"><span class="nm">${esc(s.n)}</span><span class="crs">${s.c}</span></button>`).join("")
+    : `<div class="st-none">No stations match.</div>`;
+}
+
+function chooseLiveRailPick(which, crs){
+  const s = STATIONS.find(x=>x.c===crs);
+  if(!s) return;
+  liveRailPick[which] = s;
+  fillLiveRailSlot(which);
+  checkLiveRail();
+}
+
+function checkLiveRail(){
+  const ok = liveRailPick.from && liveRailPick.to && liveRailPick.from.c !== liveRailPick.to.c;
+  const btn = document.getElementById("live-rail-go");
+  if(btn) btn.disabled = !ok;
+}
+
+function goLiveRail(){
+  if(!liveRailPick.from || !liveRailPick.to) return;
+  state.railLiveActive = true;
+  state.railLive = { from: liveRailPick.from.c, to: liveRailPick.to.c };
+  saveLocal("railLiveActive", true);
+  saveLocal("railLiveStations", state.railLive);
+  state.services = [];
+  state.expandedId = null;
+  render();
+  refresh(false);
 }
 
 function setJourneyNote(html, kind){
@@ -2172,7 +2344,8 @@ function setMode(m){
 }
 
 function applyMode(){
-  const m = state.mode;                       // "rail" | "bus" | "tube" | "commute"
+  const m = state.mode;                       // "home" | "rail" | "bus" | "tube" | "commute"
+  document.getElementById("home-view").hidden = m !== "home";
   document.getElementById("rail-view").hidden = m !== "rail";
   document.getElementById("bus-view").hidden  = m !== "bus";
   document.getElementById("tube-view").hidden = m !== "tube";
@@ -2181,6 +2354,7 @@ function applyMode(){
 
   // drawer selection + header title
   const meta = {
+    home:    ["Commuter", "where to?"],
     commute: ["Commutes", "your saved commutes"],
     rail:    ["Rail", "live departures"],
     bus:     ["Bus", "live arrivals"],
@@ -2190,7 +2364,9 @@ function applyMode(){
   const t = document.getElementById("screen-title"); if(t) t.textContent = meta[0];
   const sub = document.getElementById("screen-sub"); if(sub) sub.textContent = meta[1];
   if(m === "alerts") renderAlerts();
-  ["commute","rail","bus","tube","alerts"].forEach(k=>{
+  if(m === "rail"){ initLiveRail(); }
+  if(m === "tube"){ initLiveTube(); }
+  ["home","commute","rail","bus","tube","alerts"].forEach(k=>{
     const el = document.getElementById("dr-"+k);
     if(el) el.setAttribute("aria-selected", String(k===m));
   });
@@ -2245,39 +2421,45 @@ async function refreshDrawerStatus(){
 }
 
 
-function curStop(){ return state.busStops[state.busIdx] || null; }
+function curStop(){
+  if(state.busLiveActive && state.liveBusStop) return state.liveBusStop;
+  return state.busStops[state.busIdx] || null;
+}
 
-/* ---- finder ---- */
-function findByLocation(){
-  const btn = document.getElementById("loc-btn");
-  const msg = document.getElementById("finder-msg");
+/* ---- finder ----
+   Shared by the "Add stop" sheet (live=false, default) and the inline live
+   finder at the top of the Bus view (live=true) — same lookup, different
+   target elements and outcome (save vs. show immediately). */
+function findByLocation(live){
+  const btn = document.getElementById(live ? "lb-loc-btn" : "loc-btn");
+  const msg = document.getElementById(live ? "lb-finder-msg" : "finder-msg");
   msg.className = "finder-msg"; msg.textContent = "";
   if(!navigator.geolocation){ msg.textContent = "Location isn't available. Enter a postcode instead."; return; }
   btn.disabled = true; btn.textContent = "Finding you…";
   navigator.geolocation.getCurrentPosition(
     async (pos)=>{
-      await fetchStops({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-      resetLocBtn();
+      await fetchStops({ lat: pos.coords.latitude, lon: pos.coords.longitude }, live);
+      resetLocBtn(live);
     },
-    ()=>{ msg.className="finder-msg err"; msg.textContent="Couldn't get your location. Enter a postcode instead."; resetLocBtn(); },
+    ()=>{ msg.className="finder-msg err"; msg.textContent="Couldn't get your location. Enter a postcode instead."; resetLocBtn(live); },
     { timeout: 8000, maximumAge: 60000 }
   );
 }
-function resetLocBtn(){
-  const btn = document.getElementById("loc-btn");
+function resetLocBtn(live){
+  const btn = document.getElementById(live ? "lb-loc-btn" : "loc-btn");
   btn.disabled = false;
   btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="10" r="3"/><path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11Z"/></svg> Use my location`;
 }
-function findByPostcode(){
-  const pc = (document.getElementById("pc-input").value || "").trim();
-  const msg = document.getElementById("finder-msg");
+function findByPostcode(live){
+  const pc = (document.getElementById(live ? "lb-pc-input" : "pc-input").value || "").trim();
+  const msg = document.getElementById(live ? "lb-finder-msg" : "finder-msg");
   if(!pc){ msg.className="finder-msg err"; msg.textContent="Enter a postcode first."; return; }
-  fetchStops({ postcode: pc });
+  fetchStops({ postcode: pc }, live);
 }
 
-async function fetchStops(params){
-  const msg = document.getElementById("finder-msg");
-  const box = document.getElementById("bus-results");
+async function fetchStops(params, live){
+  const msg = document.getElementById(live ? "lb-finder-msg" : "finder-msg");
+  const box = document.getElementById(live ? "lb-bus-results" : "bus-results");
   msg.className = "finder-msg"; msg.textContent = "Looking for stops nearby…"; box.innerHTML = "";
   const qs = params.postcode ? `postcode=${encodeURIComponent(params.postcode)}` : `lat=${params.lat}&lon=${params.lon}`;
   let stops = null, coords = null;
@@ -2290,7 +2472,7 @@ async function fetchStops(params){
     }
   }catch(e){ /* fall through */ }
 
-  if(stops){ msg.textContent = ""; renderStops(stops); return; }
+  if(stops){ msg.textContent = ""; renderStops(stops, live); return; }
 
   // No TfL stops here. TfL only covers London, so outside it we try BODS,
   // the national feed. BODS gives live vehicle POSITIONS, not arrival
@@ -2302,7 +2484,7 @@ async function fetchStops(params){
       const d = await r.json();
       if(r.ok && d.available && d.vehicles && d.vehicles.length){
         msg.textContent = "";
-        renderBodsVehicles(d.vehicles);
+        renderBodsVehicles(d.vehicles, live);
         return;
       }
       if(d && d.available === false && d.reason && d.reason.includes("not configured")){
@@ -2318,14 +2500,14 @@ async function fetchStops(params){
 
   stops = demoStops();          // preview / offline fallback
   msg.textContent = "";
-  renderStops(stops);
+  renderStops(stops, live);
 }
 
 /* Live buses near a point, outside London (BODS). These are positions, not
    predictions, so each row shows where the bus IS and how old the report is —
    never a made-up arrival time. */
-function renderBodsVehicles(vehicles){
-  const box = document.getElementById("bus-results");
+function renderBodsVehicles(vehicles, live){
+  const box = document.getElementById(live ? "lb-bus-results" : "bus-results");
   const age = s => s==null ? "" : s < 60 ? `${s}s ago` : `${Math.round(s/60)} min ago`;
   const rows = vehicles.slice(0,10).map(v=>`
     <div class="stop bods-veh">
@@ -2339,13 +2521,13 @@ function renderBodsVehicles(vehicles){
     ${rows}`;
 }
 
-function renderStops(stops){
-  const box = document.getElementById("bus-results");
+function renderStops(stops, live){
+  const box = document.getElementById(live ? "lb-bus-results" : "bus-results");
   box.innerHTML = stops.map((s,i)=>{
     stopCache[i] = s;
     const dist = s.distance!=null ? `${s.distance} m` : "";
     const routes = (s.routes||[]).slice(0,5).map(r=>`<span class="route-chip">${esc(r)}</span>`).join("");
-    return `<button class="stop" onclick="pickStop(${i})">
+    return `<button class="stop" onclick="${live?`pickLiveStop(${i})`:`pickStop(${i})`}">
       <span class="sname">${esc(s.name)}</span>
       <span class="sdist">${dist}</span>
       <span class="smeta">${s.toward?`towards <b>${esc(s.toward)}</b>`:""}${s.letter?` · Stop ${esc(s.letter)}`:""}</span>
@@ -2355,10 +2537,31 @@ function renderStops(stops){
 }
 let stopCache = {};
 
+/* Chosen from the inline live finder — shows the board immediately, no
+   naming or save step. */
+function pickLiveStop(i){
+  const s = stopCache[i];
+  if(!s) return;
+  state.busLiveActive = true;
+  state.liveBusStop = { ...s };
+  saveLocal("busLiveActive", true);
+  saveLocal("liveBusStop", state.liveBusStop);
+  state.busData = null;
+  const box = document.getElementById("lb-bus-results");
+  if(box) box.innerHTML = "";
+  const msg = document.getElementById("lb-finder-msg");
+  if(msg) msg.textContent = "";
+  renderSwitcher();
+  fillStopHead();
+  refresh(false);
+}
+
 /* ---- bus stops: pills, add/edit sheet, delete ---- */
 
 function setBusStop(i){
   if(!state.busStops[i]) return;
+  state.busLiveActive = false;
+  saveLocal("busLiveActive", false);
   state.busIdx = i;
   state.busData = null;
   saveLocal("busidx", i);
@@ -2372,7 +2575,7 @@ function renderSwitcher(){
   if(!el) return;
   const pills = state.busStops.map((s,i)=>
     `<span class="jrn-wrap" data-idx="${i}">
-       <button class="jrn-pill" role="tab" aria-selected="${i===state.busIdx}" onclick="setBusStop(${i})">${esc(pillLabel(s))}</button>
+       <button class="jrn-pill" role="tab" aria-selected="${!state.busLiveActive && i===state.busIdx}" onclick="setBusStop(${i})">${esc(pillLabel(s))}</button>
        <button class="jrn-pencil" aria-label="Edit stop" title="Edit" onclick="openBusSheet(${i},event)">
          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
        </button>
@@ -2384,7 +2587,7 @@ function renderSwitcher(){
     getIdx:()=>state.busIdx, setIdx:v=>state.busIdx=v, render:renderSwitcher
   });
 
-  const has = state.busStops.length > 0;
+  const has = state.busStops.length > 0 || state.busLiveActive;
   document.getElementById("bus-empty").hidden = has;
   document.getElementById("bus-board-wrap").hidden = !has;
 }
@@ -2757,7 +2960,10 @@ function toggleTubeStatus(){
 }
 
 /* ---- saved journeys ---- */
-function curTube(){ return state.tubeJourneys[state.tubeIdx] || null; }
+function curTube(){
+  if(state.tubeLiveActive && state.tubeLive.from && state.tubeLive.to) return state.tubeLive;
+  return state.tubeJourneys[state.tubeIdx] || null;
+}
 
 function renderTubePills(){
   const el = document.getElementById("tube-switch");
@@ -2777,11 +2983,13 @@ function renderTubePills(){
     getArr:()=>state.tubeJourneys, setArr:v=>state.tubeJourneys=v,
     getIdx:()=>state.tubeIdx, setIdx:v=>state.tubeIdx=v, render:renderTubePills
   });
-  document.getElementById("tube-empty").hidden = state.tubeJourneys.length > 0;
+  document.getElementById("tube-empty").hidden = state.tubeJourneys.length > 0 || state.tubeLiveActive;
 }
 
 function setTubeJourney(i){
   if(!state.tubeJourneys[i]) return;
+  state.tubeLiveActive = false;
+  saveLocal("tubeLiveActive", false);
   state.tubeIdx = i;
   tubePlan = null;
   saveLocal("tubeidx", i);
@@ -3118,6 +3326,80 @@ function paintTubeRoutes(){
   }).join("");
 }
 function pickTubeRoute(i){ tubeChosen = i; paintTubeRoutes(); }
+
+/* ---- inline live tube search (top of Tube view; no save step) ---- */
+let liveTubePick = { from:null, to:null };
+let liveTubeSearchT;
+
+function initLiveTube(){
+  const saved = readLocal("tubeLiveStations");
+  if(saved && saved.from && saved.to) liveTubePick = { from:saved.from, to:saved.to };
+  fillLiveTubeSlot("from"); fillLiveTubeSlot("to"); checkLiveTube();
+}
+
+function fillLiveTubeSlot(which){
+  const el = document.getElementById("t-live-"+which+"-slot");
+  if(!el) return;
+  const p = liveTubePick[which];
+  if(p){
+    el.innerHTML = `<div class="picked">${esc(p.name)}<button onclick="clearLiveTubePick('${which}')">change</button></div>`;
+  } else {
+    el.innerHTML = `<input placeholder="Search tube station\u2026" autocomplete="off" oninput="searchLiveTube('${which}',this.value)" />
+      <div class="st-results" id="t-live-${which}-res"></div>`;
+  }
+}
+function clearLiveTubePick(which){ liveTubePick[which] = null; fillLiveTubeSlot(which); checkLiveTube(); }
+
+function swapLiveTube(){
+  if(!liveTubePick.from && !liveTubePick.to) return;
+  [liveTubePick.from, liveTubePick.to] = [liveTubePick.to, liveTubePick.from];
+  fillLiveTubeSlot("from"); fillLiveTubeSlot("to");
+  checkLiveTube();
+}
+
+function searchLiveTube(which, q){
+  clearTimeout(liveTubeSearchT);
+  const res = document.getElementById(`t-live-${which}-res`);
+  if(!q || q.trim().length < 2){ res.innerHTML = ""; return; }
+  liveTubeSearchT = setTimeout(async ()=>{
+    res.innerHTML = `<div class="t-spin">Searching\u2026</div>`;
+    try{
+      const r = await fetch(`/api/tube/search?q=${encodeURIComponent(q.trim())}`, { headers:{accept:"application/json"} });
+      const d = await r.json();
+      const hits = (d.stations||[]).slice(0,8);
+      res.innerHTML = hits.length ? hits.map(s=>`
+        <button class="st-row" onclick="chooseLiveTube('${which}','${esc(s.id)}','${esc(s.name).replace(/'/g,"\\'")}')">
+          <span class="nm">${esc(s.name)}</span>
+          <span class="srow-ls">${(s.lines||[]).slice(0,6).map(l=>`<i style="background:${lineColour(l)}"></i>`).join("")}</span>
+        </button>`).join("") : `<div class="st-none">No stations match.</div>`;
+    }catch(e){ res.innerHTML = `<div class="st-none">Search failed.</div>`; }
+  }, 250);
+}
+
+function chooseLiveTube(which, id, name){
+  liveTubePick[which] = { id, name };
+  fillLiveTubeSlot(which);
+  checkLiveTube();
+}
+
+function checkLiveTube(){
+  const ok = liveTubePick.from && liveTubePick.to && liveTubePick.from.id !== liveTubePick.to.id;
+  const btn = document.getElementById("live-tube-go");
+  if(btn) btn.disabled = !ok;
+}
+
+function goLiveTube(){
+  if(!liveTubePick.from || !liveTubePick.to) return;
+  state.tubeLiveActive = true;
+  state.tubeLive = { from: liveTubePick.from, to: liveTubePick.to };
+  saveLocal("tubeLiveActive", true);
+  saveLocal("tubeLiveStations", state.tubeLive);
+  tubePlan = null;
+  renderTubePills();
+  const card = document.getElementById("tube-card");
+  if(card) card.innerHTML = `<div class="troute"><div class="t-spin">Planning your route\u2026</div></div>`;
+  loadTubeJourney();
+}
 
 function checkTube(){
   const ok = tubePick.from && tubePick.to && tubeRoutes.length && tubeChosen !== null;
@@ -3677,7 +3959,18 @@ function deleteCommute(){
 
 // restore saved mode + bus stop (from the live site; harmless in the sandbox)
 const _savedMode = readLocal("mode");
-state.mode = ["rail","bus","tube","commute"].includes(_savedMode) ? _savedMode : "commute";
+state.mode = ["home","rail","bus","tube","commute"].includes(_savedMode) ? _savedMode : "home";
+state.railLiveActive = !!readLocal("railLiveActive");
+state.tubeLiveActive = !!readLocal("tubeLiveActive");
+state.busLiveActive = !!readLocal("busLiveActive");
+{
+  const rl = readLocal("railLiveStations");
+  if(rl && rl.from && rl.to) state.railLive = rl;
+  const tl = readLocal("tubeLiveStations");
+  if(tl && tl.from && tl.to) state.tubeLive = tl;
+  const bl = readLocal("liveBusStop");
+  if(bl) state.liveBusStop = bl;
+}
 (function restoreTube(){
   const arr = readLocal("tubejourneys");
   if(Array.isArray(arr)) state.tubeJourneys = arr.filter(j=>j && j.from && j.to && j.name);
