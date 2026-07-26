@@ -8,7 +8,7 @@
 // "consumer key"), not a SOAP token.
 //
 // Env vars (Cloudflare Pages > Settings > Environment variables):
-//   DARWIN_APIKEY  – your RDM consumer key for the "Live Departure Board" product
+//   LDB_KEY  – your RDM consumer key for the "Live Departure Board" product
 //
 // The product path segment (1010-live-departure-board-dep) and version date (20220120)
 // come from the product's Specification tab on RDM — override via env if yours differ.
@@ -49,7 +49,7 @@ export async function onRequest(context) {
   const rows = Math.min(Number(url.searchParams.get("rows")) || 10, 10); // RDM caps at 10
 
   if (!from) return json({ error: "Missing 'from' CRS code, e.g. ?from=NWM" }, 400);
-  if (!env.DARWIN_APIKEY) return json({ error: "DARWIN_APIKEY not configured on the server" }, 500);
+  if (!env.LDB_KEY) return json({ error: "LDB_KEY not configured on the server" }, 500);
 
   // Build the REST URL. CRS goes in the path; filters go in the query string.
   const params = new URLSearchParams({ numRows: String(rows) });
@@ -60,17 +60,17 @@ export async function onRequest(context) {
   const win = url.searchParams.get("window");
   if (win) params.set("timeWindow", String(Math.min(Number(win) || 0, 120)));
   const endpoint =
-    `${RDM_BASE}/${env.DARWIN_PRODUCT || PRODUCT}/LDBWS/api/${env.DARWIN_VERSION || VERSION}` +
+    `${RDM_BASE}/${env.LDB_PRODUCT || PRODUCT}/LDBWS/api/${env.LDB_VERSION || VERSION}` +
     `/GetDepBoardWithDetails/${from}?${params.toString()}`;
 
   let data;
   try {
     const resp = await fetch(endpoint, {
-      headers: { "x-apikey": env.DARWIN_APIKEY, Accept: "application/json" },
+      headers: { "x-apikey": env.LDB_KEY, Accept: "application/json" },
     });
     const text = await resp.text();
     if (!resp.ok) {
-      // 401 = key not entitled to this product path (check DARWIN_PRODUCT/DARWIN_VERSION
+      // 401 = key not entitled to this product path (check LDB_PRODUCT/LDB_VERSION
       //        match your subscribed product's Specification tab, and that it's Approved).
       // 404 = wrong product path or CRS.
       return json(

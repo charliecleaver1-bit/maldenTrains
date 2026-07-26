@@ -631,7 +631,11 @@ async function loadBoards() {
 async function describeFailure(r) {
   let detail = null;
   try { detail = await r.json(); } catch (e) {}
-  return `HTTP ${r.status}${detail?.status ? ` (upstream ${detail.status})` : ""}`;
+  const bits = [`HTTP ${r.status}`];
+  if (detail?.status) bits.push(`upstream ${detail.status}`);
+  if (detail?.error) bits.push(detail.error);          // e.g. "DARWIN_APIKEY not configured on the server"
+  else if (detail?.detail) bits.push(String(detail.detail).slice(0, 150));
+  return bits.join(" — ");
 }
 
 async function fetchBoard(leg, signal) {

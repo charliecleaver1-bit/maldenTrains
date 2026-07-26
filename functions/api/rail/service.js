@@ -7,21 +7,22 @@
 // maldenTrains app, adapted to Darwin's schema and generalised to any station pair
 // (the original was New Malden/Waterloo-specific).
 //
-// IMPORTANT: GetServiceDetails is a DIFFERENT RDM data product from the Live Departure
-// Board one — subscribing to one does not give access to the other. An "Unable to
-// route the message to a Target Endpoint" / messaging.runtime.RouteFailed error means
-// exactly this: the path being called isn't a valid route on the departure-board
-// product's API proxy. Subscribe to RDM's "Service Details" product separately, then
-// set DARWIN_SERVICE_PRODUCT (and DARWIN_SERVICE_VERSION if it differs from the
-// default below) in Cloudflare Pages env vars to its base path from the
-// Specification tab — no code change needed once you have that.
-//
-// "Formed by" similarly calls GetArrBoardWithDetails, which may also need its own
-// subscription — configurable via DARWIN_ARRIVALS_PRODUCT for the same reason.
+// GetServiceDetails and GetArrBoardWithDetails are DIFFERENT RDM data products from
+// the Live Departure Board one — each needs its own subscription and its own API key
+// (LDB_SVC_KEY / LDB_ARR_KEY), confirmed against this account's actual RDM products.
+// Product path/version can be overridden via LDB_SVC_PRODUCT/LDB_SVC_VERSION and
+// LDB_ARR_PRODUCT/LDB_ARR_VERSION if RDM ever changes them, but the defaults below are
+// the confirmed values from this account's Specification tabs.
 
 const RDM_BASE = "https://api1.raildata.org.uk";
-const PRODUCT = "1010-live-departure-board-dep1_2";
 const VERSION = "20220120";
+const PRODUCTS = {
+  service: "1010-service-details1_2",
+  arrivals: "1010-live-arrival-board-arr",
+};
+const KEY_ENV = { service: "LDB_SVC_KEY", arrivals: "LDB_ARR_KEY" };
+const PRODUCT_ENV = { service: "LDB_SVC_PRODUCT", arrivals: "LDB_ARR_PRODUCT" };
+const VERSION_ENV = { service: "LDB_SVC_VERSION", arrivals: "LDB_ARR_VERSION" };
 
 function json(obj, status = 200, extra = {}) {
   return new Response(JSON.stringify(obj), {
@@ -30,15 +31,11 @@ function json(obj, status = 200, extra = {}) {
   });
 }
 
-// `productEnvVar` lets each call site use its own product subscription — service
-// details, arrivals, and the departure board are likely three separate RDM products
-// even though they all sit under the same LDBWS API family. Each product can also have
-// its own API key (e.g. DARWIN_SERVICE_APIKEY) if RDM issued a different one for that
-// subscription — falls back to the shared DARWIN_APIKEY if no product-specific key is set.
-async function rdmGet(env, path, productEnvVar) {
-  const product = (productEnvVar && env[productEnvVar]) || env.DARWIN_PRODUCT || PRODUCT;
-  const version = (productEnvVar && env[productEnvVar.replace("_PRODUCT", "_VERSION")]) || env.DARWIN_VERSION || VERSION;
-  const apiKey = (productEnvVar && env[productEnvVar.replace("_PRODUCT", "_APIKEY")]) || env.DARWIN_APIKEY;
+// `kind` is "service" or "arrivals" — each RDM product gets its own key and product path.
+async function rdmGet(env, path, kind) {
+  const product = env[PRODUCT_ENV[kind]] || PRODUCTS[kind];
+  const version = env[VERSION_ENV[kind]] || VERSION;
+  const apiKey = env[KEY_ENV[kind]];
   const endpoint = `${RDM_BASE}/${product}/LDBWS/api/${version}${path}`;
   let resp;
   try {
@@ -62,9 +59,9 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   if (!id) return json({ error: "Missing 'id' (serviceID)" }, 400);
-  if (!env.DARWIN_APIKEY && !env.DARWIN_SERVICE_APIKEY) return json({ error: "No API key configured (DARWIN_APIKEY or DARWIN_SERVICE_APIKEY)" }, 500);
+  if (!env.LDB_SVC_KEY) return json({ error: "LDB_SVC_KEY not configured" }, 500);
 
-  const svcResp = await rdmGet(env, `/GetServiceDetails/${encodeURIComponent(id)}`, "DARWIN_SERVICE_PRODUCT");
+  const svcResp = await rdmGet(env, `/GetServiceDetails/${encodeURIComponent(id)}`, "service");
   // Surface the real failure instead of a generic message — this is exactly the kind
   // of thing that was silently swallowed before and made a real bug look mysterious.
   if (!svcResp.ok) return json({ error: "RDM error", status: svcResp.status, endpoint: svcResp.endpoint, detail: svcResp.detail }, 502);
@@ -84,7 +81,7 @@ export async function onRequest(context) {
     else result._inboundNote = result2.reason || "No inbound working could be inferred.";
   } catch (e) {
     // Surfaced (not swallowed) so "why is Formed By missing" is answerable — most
-    // likely cause is DARWIN_ARRIVALS_PRODUCT/DARWIN_ARRIVALS_APIKEY not set yet,
+    // likely cause is LDB_ARR_KEY not set/entitled yet,
     // same pattern as the GetServiceDetails routing fix.
     result._inboundNote = `Formed-by lookup failed: ${e.message || e}`;
   }
@@ -194,7 +191,7 @@ async function inferInbound(env, svc) {
   const depMin = timeToMinutesToday(origin.st);
   if (depMin == null) return { reason: "Couldn't parse the origin departure time." };
 
-  const arrResp = await rdmGet(env, `/GetArrBoardWithDetails/${origin.crs}?numRows=15&timeWindow=45`, "DARWIN_ARRIVALS_PRODUCT");
+  const arrResp = await rdmGet(env, `/GetArrBoardWithDetails/${origin.crs}?numRows=15&timeWindow=45`, "arrivals");
   if (!arrResp.ok) {
     // A real API failure (wrong product/key, RouteFailed, etc.) — propagate so the
     // caller can surface it, rather than silently looking like "nothing to infer".
@@ -224,7 +221,7 @@ async function inferInbound(env, svc) {
   const inId = best.serviceIdPercentEncoded || best.serviceID;
   if (!inId) return { reason: "Found a plausible inbound arrival but it had no service ID to look up." };
 
-  const inResp = await rdmGet(env, `/GetServiceDetails/${encodeURIComponent(inId)}`, "DARWIN_SERVICE_PRODUCT");
+  const inResp = await rdmGet(env, `/GetServiceDetails/${encodeURIComponent(inId)}`, "service");
   if (!inResp.ok) {
     throw new Error(`inbound service-details error (status ${inResp.status}): ${(inResp.detail || "").slice(0, 150)}`.trim());
   }

@@ -30,9 +30,9 @@ function json(obj, status = 200) {
 
 async function board(env, from, params) {
   const endpoint =
-    `${RDM_BASE}/${env.DARWIN_PRODUCT || PRODUCT}/LDBWS/api/${env.DARWIN_VERSION || VERSION}` +
+    `${RDM_BASE}/${env.LDB_PRODUCT || PRODUCT}/LDBWS/api/${env.LDB_VERSION || VERSION}` +
     `/GetDepBoardWithDetails/${from}?${params.toString()}`;
-  const resp = await fetch(endpoint, { headers: { "x-apikey": env.DARWIN_APIKEY, Accept: "application/json" } });
+  const resp = await fetch(endpoint, { headers: { "x-apikey": env.LDB_KEY, Accept: "application/json" } });
   const text = await resp.text();
   if (!resp.ok) return { ok: false, status: resp.status, endpoint, detail: text.slice(0, 200) };
   return { ok: true, data: JSON.parse(text) };
@@ -46,7 +46,7 @@ export async function onRequest(context) {
 
   if (!from || !to) return json({ error: "Need both 'from' and 'to' CRS codes" }, 400);
   if (from === to) return json({ error: "from and to are the same station", direct: false }, 400);
-  if (!env.DARWIN_APIKEY) return json({ error: "DARWIN_APIKEY not configured" }, 500);
+  if (!env.LDB_KEY) return json({ error: "LDB_KEY not configured" }, 500);
 
   try {
     const direct = await board(env, from, new URLSearchParams({ numRows: "10", filterCrs: to, filterType: "to", timeWindow: "120" }));
