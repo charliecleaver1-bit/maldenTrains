@@ -807,8 +807,16 @@ async function toggleServiceDetail(row, leg) {
   const board = boards[leg.id] || {};
   const s = (board.services || []).find((x) => x.serviceID === row.dataset.svcId) || {};
 
-  if (leg.mode !== "rail") {
+  if (leg.mode === "tube") {
     panel.innerHTML = renderTubePanel(leg, s);
+    panel.dataset.loaded = "1";
+    scrollTimelineToCurrent(panel);
+    return;
+  }
+
+  if (leg.mode === "bus") {
+    panel.innerHTML = '<p class="hint" style="padding:6px 0">Loading route…</p>';
+    panel.innerHTML = await renderBusPanel(leg, s);
     panel.dataset.loaded = "1";
     scrollTimelineToCurrent(panel);
     return;
@@ -927,6 +935,55 @@ function renderTubePanel(leg, s) {
     <div class="svc-divider"></div>
     <p class="hint" style="margin-bottom:10px">TfL's live tube data gives one prediction per train, not a full stop-by-stop schedule like National Rail — so this shows the route ahead rather than a precisely tracked position.</p>
     ${renderTimeline(stops, 0)}`;
+}
+
+// Bus's equivalent — same "one prediction per vehicle, no full schedule" limitation as
+// tube, but the onward-stops list comes from the route/direction data (fetched fresh if
+// this is a saved journey, since that transient data isn't kept in what gets saved).
+async function renderBusPanel(leg, s) {
+  const stops = await busOnwardStops(leg);
+  const countdown = s.countdown != null ? (s.countdown <= 1 ? "Due" : s.countdown) : null;
+  const countdownUnit = s.countdown != null && s.countdown > 1 ? "min" : "";
+  return `
+    <div class="svc-live-tag"><span class="svc-live-dot"></span>LIVE</div>
+    <div class="svc-dest">${esc(s.destination || "—")}</div>
+    <div class="svc-calls">calls ${esc(leg.to_name)}</div>
+    <div class="svc-departs-row">
+      <div>
+        <div class="svc-departs-label">DUE</div>
+        <div class="svc-departs-time">${esc(s.currentLocation || "En route")}</div>
+      </div>
+      ${countdown != null ? `<div class="svc-countdown"><span class="svc-countdown-num">${esc(String(countdown))}${countdownUnit ? ` <span>${countdownUnit}</span>` : ""}</span><span class="svc-countdown-label">TO GO</span></div>` : ""}
+    </div>
+    <div class="svc-divider"></div>
+    <p class="hint" style="margin-bottom:10px">TfL's live bus data gives one prediction per bus, not a full stop-by-stop schedule like National Rail — so this shows the route ahead rather than a precisely tracked position.</p>
+    ${renderTimeline(stops, 0)}`;
+}
+
+// Boarding stop + the stops on to your destination, for the route/direction this leg
+// uses. A fresh Live lookup already has this in leg._routeDirs; a saved journey had it
+// stripped before saving (it's transient setup data), so re-fetch it in that case.
+async function busOnwardStops(leg) {
+  let dirs = leg._routeDirs, dirIdx = leg._dirIdx ?? 0;
+  if (!dirs) {
+    try {
+      const r = await fetch(`/api/bus/route-stops?route=${encodeURIComponent(leg.route || leg.line)}`);
+      const d = await r.json();
+      dirs = d.directions || [];
+      // Saved journeys don't keep _dirIdx either — find whichever direction actually
+      // contains both stops in the right order.
+      dirIdx = dirs.findIndex((dr) => {
+        const ids = (dr.stops || []).map((x) => x.id);
+        const fi = ids.indexOf(leg.from_id), ti = ids.indexOf(leg.to_id);
+        return fi !== -1 && ti !== -1 && ti > fi;
+      });
+      if (dirIdx < 0) dirIdx = 0;
+    } catch (e) { dirs = []; }
+  }
+  const stopList = (dirs[dirIdx] && dirs[dirIdx].stops) || [];
+  const fromIdx = stopList.findIndex((x) => x.id === leg.from_id);
+  const slice = fromIdx >= 0 ? stopList.slice(fromIdx, fromIdx + 9) : [{ name: leg.from_name }];
+  return slice.map((x, i) => ({ name: x.name, current: i === 0, passed: false, std: null }));
 }
 
 // Shared horizontal "live position" timeline — a scrollable track of dots, times above,

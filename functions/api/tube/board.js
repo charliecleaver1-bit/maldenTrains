@@ -118,7 +118,7 @@ export async function onRequest(context) {
         status: severity,                   // per-arrival status follows line status for tube
         estimated: hhmm(a.expectedArrival),
         countdown: mins,                    // exact minutes — the "5 min / 8 min" value
-        platform: a.platformName || null,
+        platform: (a.platformName && a.platformName.toLowerCase() !== "null") ? a.platformName : null,
         operator: "TfL",
         delayReason: disruptionReason,
         cancelReason: null,

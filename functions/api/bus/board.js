@@ -59,7 +59,7 @@ export async function onRequest(context) {
         status: "on_time",              // live predictions are inherently "current"; delays show as later countdowns
         estimated: hhmm(a.expectedArrival),
         countdown: mins,
-        platform: a.platformName || null, // often the stop letter, e.g. "Stop K"
+        platform: (a.platformName && a.platformName.toLowerCase() !== "null") ? a.platformName : null, // often the stop letter, e.g. "Stop K" — TfL sometimes literally returns the string "null" here rather than omitting the field
         operator: a.lineName || "Bus",
         delayReason: null,
         cancelReason: null,
