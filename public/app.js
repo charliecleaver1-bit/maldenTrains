@@ -75,7 +75,7 @@ function ensureSavedJourneys(c) {
    Routing
    ============================================================ */
 function show(screen) {
-  ["landing", "mode-hub", "saved-list", "lookup", "home", "create", "setup", "leg"].forEach((s) => { el("screen-" + s).hidden = s !== screen; });
+  ["landing", "mode-hub", "lookup", "home", "create", "setup", "leg"].forEach((s) => { el("screen-" + s).hidden = s !== screen; });
   window.scrollTo(0, 0);
 }
 
@@ -1002,9 +1002,8 @@ async function bootHome() {
    code, but keeps this new flow from risking any change to the existing, working
    commute setup. Board fetching/rendering (fetchBoard, openLegDetail) IS reused as-is.
    ============================================================ */
-let currentMode = null;         // 'tube' | 'rail' | 'bus' while in mode-hub/lookup/saved-list
+let currentMode = null;         // 'tube' | 'rail' | 'bus' while in mode-hub/lookup
 let lookupLeg = null;           // the ad-hoc leg-like object currently being picked/viewed
-let lookupBackTarget = "mode-hub"; // where btn-lookup-back returns to
 let legBackTarget = "home";     // where btn-leg-back returns to
 
 function openLanding() { currentMode = null; show("landing"); }
@@ -1012,44 +1011,41 @@ function openLanding() { currentMode = null; show("landing"); }
 function openModeHub(mode) {
   currentMode = mode;
   el("modehub-title").textContent = MODE_LABEL[mode];
+  renderModeHubSavedList(mode);
   show("mode-hub");
 }
 
-function openSavedList(mode) {
-  currentMode = mode;
-  el("savedlist-title").textContent = MODE_LABEL[mode] + " · Saved journeys";
-  const host = el("saved-list-body");
+function renderModeHubSavedList(mode) {
+  const host = el("modehub-saved-list");
   const list = commute.savedJourneys[mode] || [];
   if (!list.length) {
-    host.innerHTML = `<p class="hint" style="padding:20px 4px">No saved ${esc(MODE_LABEL[mode].toLowerCase())} journeys yet. Tap + to add one.</p>`;
-  } else {
-    host.innerHTML = list.map((j) => {
-      const col = j.mode === "tube" ? lineColour(j.line) : (j.mode === "rail" ? "#2456E6" : "#C15F3C");
-      const title = j.mode === "tube" ? lineName(j.line) : (j.mode === "rail" ? "Train" : `Bus ${esc(j.route || "")}`);
-      return `<div class="setup-leg collapsed">
-        <button class="leg-summary" data-open="${esc(j.id)}">
-          <span class="sum-sw" style="background:${col}"></span>
-          <span class="sum-main"><span class="sum-title">${esc(title)}</span><span class="sum-route">${esc(j.from_name)} → ${esc(j.to_name)}</span></span>
-          <span class="sum-edit">View</span>
-        </button>
-      </div>`;
-    }).join("");
-    host.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => {
-      const j = list.find((x) => x.id === b.dataset.open);
-      if (j) openSavedJourney(j);
-    });
+    host.innerHTML = `<p class="hint" style="padding:4px 2px 20px">Nothing saved yet — search a journey via Live and tap ☆ to save it here.</p>`;
+    return;
   }
-  show("saved-list");
+  host.innerHTML = list.map((j) => {
+    const col = j.mode === "tube" ? lineColour(j.line) : (j.mode === "rail" ? "#2456E6" : "#C15F3C");
+    const title = j.mode === "tube" ? lineName(j.line) : (j.mode === "rail" ? "Train" : `Bus ${esc(j.route || "")}`);
+    return `<div class="setup-leg collapsed">
+      <button class="leg-summary" data-open="${esc(j.id)}">
+        <span class="sum-sw" style="background:${col}"></span>
+        <span class="sum-main"><span class="sum-title">${esc(title)}</span><span class="sum-route">${esc(j.from_name)} → ${esc(j.to_name)}</span></span>
+        <span class="sum-edit">View</span>
+      </button>
+    </div>`;
+  }).join("");
+  host.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => {
+    const j = list.find((x) => x.id === b.dataset.open);
+    if (j) openSavedJourney(j);
+  });
 }
 
 async function openSavedJourney(journey) {
   lookupLeg = { ...journey };
-  await showLookupResult(lookupLeg, "saved-list");
+  await showLookupResult(lookupLeg);
 }
 
-function openLookup(mode, backTo) {
+function openLookup(mode) {
   currentMode = mode;
-  lookupBackTarget = backTo || "mode-hub";
   el("lookup-title").textContent = MODE_LABEL[mode] + " · Live";
   lookupLeg = newLookupLeg(mode);
   renderLookupPicker();
@@ -1221,8 +1217,8 @@ function updateLookupGoButton() { el("lookup-savebar").hidden = !lookupComplete(
 // a saved journey), reusing the exact same fetchBoard()/openLegDetail() machinery the
 // main saved commute uses — so it gets the same expandable rail/tube detail, formed-by,
 // crowding, everything, for free.
-async function showLookupResult(leg, backTarget) {
-  legBackTarget = backTarget || "mode-hub";
+async function showLookupResult(leg) {
+  legBackTarget = "mode-hub";
   try {
     if (leg.mode === "tube" && leg.tubeDir === undefined) await resolveTubeDirections([leg]);
     if (leg.mode === "rail" && leg.expectedVia === undefined) {
@@ -1265,6 +1261,7 @@ function wireLegSaveToggle(leg) {
     }
     await apiSave(commute);
     paint();
+    renderModeHubSavedList(leg.mode);   // keep the inline list on mode-hub in sync for when we go back
   };
 }
 
@@ -1288,15 +1285,12 @@ document.querySelectorAll("[data-landing]").forEach((b) => b.onclick = () => {
 });
 el("btn-modehub-back").onclick = () => openLanding();
 el("btn-home-back").onclick = () => { stopAutoRefresh(); openLanding(); };
-el("btn-hub-live").onclick = () => openLookup(currentMode, "mode-hub");
-el("btn-hub-saved").onclick = () => openSavedList(currentMode);
-el("btn-savedlist-back").onclick = () => openModeHub(currentMode);
-el("btn-saved-add").onclick = () => openLookup(currentMode, "saved-list");
-el("btn-lookup-back").onclick = () => { if (lookupBackTarget === "saved-list") openSavedList(currentMode); else openModeHub(currentMode); };
+el("btn-hub-live").onclick = () => openLookup(currentMode);
+el("btn-lookup-back").onclick = () => openModeHub(currentMode);
 el("btn-lookup-go").onclick = async () => {
   const btn = el("btn-lookup-go");
   btn.disabled = true; const original = btn.textContent; btn.textContent = "Checking…";
-  try { await showLookupResult(lookupLeg, lookupBackTarget === "saved-list" ? "saved-list" : "mode-hub"); }
+  try { await showLookupResult(lookupLeg); }
   finally { btn.disabled = false; btn.textContent = original; }
 };
 
@@ -1315,7 +1309,6 @@ el("btn-delete-all").onclick = async () => {
 };
 el("btn-leg-back").onclick = () => {
   if (legBackTarget === "mode-hub") openModeHub(currentMode);
-  else if (legBackTarget === "saved-list") openSavedList(currentMode);
   else if (legBackTarget === "landing") openLanding();
   else renderHome();
 };
