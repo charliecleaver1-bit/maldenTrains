@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#2456E6" />
+<title>Commuter</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Commuter" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600;650&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- LANDING -->
+  <section class="screen" id="screen-landing" hidden>
+    <header class="app-header">
+      <div class="brand-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.2"/><circle cx="18" cy="17" r="2.2"/><path d="M8 7.6c3 .6 5 1.2 5 4.4s2 3.6 3 3.8"/></svg>
+      </div>
+      <div>
+        <div class="eyebrow">Commuter</div>
+        <h1>Where to?</h1>
+      </div>
+    </header>
+    <div class="landing-grid">
+      <button class="landing-tile" data-landing="tube"><span class="landing-icon"></span>Tube</button>
+      <button class="landing-tile" data-landing="rail"><span class="landing-icon"></span>Train</button>
+      <button class="landing-tile" data-landing="bus"><span class="landing-icon"></span>Bus</button>
+      <button class="landing-tile landing-tile-commute" data-landing="commute"><span class="landing-icon"></span>My commute</button>
+    </div>
+  </section>
+
+  <!-- MODE HUB -->
+  <section class="screen" id="screen-mode-hub" hidden>
+    <header class="app-header sub">
+      <button class="icon-btn" id="btn-modehub-back" aria-label="Back">‹</button>
+      <div class="eyebrow" id="modehub-title"></div>
+    </header>
+    <div class="hub-grid">
+      <button class="hub-tile" id="btn-hub-live">
+        <span class="hub-tile-title">Live</span>
+        <span class="hub-tile-sub">Look up live times between two stops — nothing saved</span>
+      </button>
+      <button class="hub-tile" id="btn-hub-saved">
+        <span class="hub-tile-title">Saved journeys</span>
+        <span class="hub-tile-sub">Your bookmarked journeys for quick access</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- SAVED JOURNEYS LIST -->
+  <section class="screen" id="screen-saved-list" hidden>
+    <header class="app-header sub">
+      <button class="icon-btn" id="btn-savedlist-back" aria-label="Back">‹</button>
+      <div class="eyebrow" id="savedlist-title"></div>
+      <div class="header-spacer"></div>
+      <button class="icon-btn" id="btn-saved-add" aria-label="Add journey">＋</button>
+    </header>
+    <div id="saved-list-body"></div>
+  </section>
+
+  <!-- LOOKUP (picker for Live or adding a saved journey) -->
+  <section class="screen" id="screen-lookup" hidden>
+    <header class="app-header sub">
+      <button class="icon-btn" id="btn-lookup-back" aria-label="Back">‹</button>
+      <div class="eyebrow" id="lookup-title"></div>
+    </header>
+    <div id="lookup-body"></div>
+    <div class="save-bar" id="lookup-savebar" hidden>
+      <button class="btn btn-primary" id="btn-lookup-go">Show live times</button>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section class="screen" id="screen-home" hidden>
+    <header class="app-header">
+      <div class="brand-tile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.2"/><circle cx="18" cy="17" r="2.2"/><path d="M8 7.6c3 .6 5 1.2 5 4.4s2 3.6 3 3.8"/></svg>
+      </div>
+      <div>
+        <div class="eyebrow">Commuter</div>
+        <h1 id="home-title">Your commute</h1>
+      </div>
+      <div class="header-spacer"></div>
+      <button class="icon-btn" id="btn-refresh" aria-label="Refresh">↻</button>
+      <button class="icon-btn" id="btn-edit" aria-label="Edit commute">⚙</button>
+    </header>
+
+    <div class="dir-toggle" id="dir-toggle" hidden>
+      <button data-dir="am" id="dir-am">To work</button>
+      <button data-dir="pm" id="dir-pm">Home</button>
+    </div>
+
+    <div id="summary"></div>
+    <div id="commute" class="commute"></div>
+  </section>
+
+  <!-- CREATE (empty state) -->
+  <section class="screen" id="screen-create" hidden>
+    <div class="hero">
+      <div class="hero-line"></div>
+      <h1>Build your commute</h1>
+      <p>Add each leg of your journey in order. We'll track it live and only nudge you when something's wrong.</p>
+      <button class="btn btn-primary" id="btn-create">Create your commute</button>
+    </div>
+  </section>
+
+  <!-- SETUP -->
+  <section class="screen" id="screen-setup" hidden>
+    <header class="app-header sub">
+      <button class="icon-btn" id="btn-setup-back" aria-label="Back">‹</button>
+      <div class="eyebrow">Build your commute</div>
+    </header>
+    <div class="setup-intro">
+      <h2>Your journey, in order</h2>
+      <p>Add each leg from home to work. The evening flips automatically.</p>
+    </div>
+    <div id="setup-legs"></div>
+    <button class="btn btn-ghost add-leg" id="btn-add-leg">＋ Add a leg</button>
+    <button class="btn-danger-text" id="btn-delete-all">Delete my commute</button>
+    <div class="save-bar">
+      <button class="btn btn-primary" id="btn-save">Save commute</button>
+    </div>
+  </section>
+
+  <!-- LEG DETAIL -->
+  <section class="screen" id="screen-leg" hidden>
+    <header class="app-header sub">
+      <button class="icon-btn" id="btn-leg-back" aria-label="Back">‹</button>
+      <div class="eyebrow" id="leg-detail-mode"></div>
+      <div class="header-spacer"></div>
+      <button class="icon-btn" id="btn-leg-save" aria-label="Save journey" hidden>☆</button>
+    </header>
+    <div id="leg-detail-body"></div>
+  </section>
+
+</div>
+<script src="/app.js"></script>
+</body>
+</html>
