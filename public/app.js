@@ -40,7 +40,10 @@ let RAIL = null, railByCrs = {};
 async function loadRail() {
   if (RAIL) return;
   try { const r = await fetch("/api/stations"); const d = await r.json(); RAIL = d.stations || []; }
-  catch (e) { const r = await fetch("/stations.fallback.json"); RAIL = await r.json(); }
+  catch (e) {
+    try { const r = await fetch("/stations.fallback.json"); RAIL = await r.json(); }
+    catch (e2) { RAIL = []; }   // both the API and the bundled fallback failed — degrade gracefully rather than crash boot
+  }
   RAIL.forEach((s) => { railByCrs[s.c] = s.n; });
 }
 function searchRail(q) {
@@ -1319,9 +1322,24 @@ initPull();
 // Landing (mode choice) is now the entry point, not the saved commute — commute data
 // still loads up front so the "My commute" tile and every mode's saved-journeys list
 // are ready the instant they're tapped, no per-screen fetch/spinner.
+//
+// IMPORTANT: every screen starts `hidden` in the HTML, and the very first thing this
+// app does is call show("landing") to reveal one of them. If anything in the boot
+// chain throws before that call — a network failure, a bad response, anything — and
+// it isn't caught, the whole page stays blank forever with zero indication why. This
+// wraps the whole sequence so that can't happen: whatever fails, the landing screen
+// still shows, and a visible banner explains what didn't load instead of silence.
 (async function () {
-  await loadRail();
-  await loadCommuteData();
+  try {
+    await loadRail();
+    await loadCommuteData();
+  } catch (e) {
+    console.error("Boot error:", e);
+    const banner = document.createElement("div");
+    banner.className = "boot-error";
+    banner.textContent = "Something didn't load correctly. Pull to refresh, or reload the page.";
+    document.body.prepend(banner);
+  }
   show("landing");
 })();
 

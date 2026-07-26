@@ -63,6 +63,7 @@ h2 { font-family: var(--display); font-weight: 600; font-size: 20px; letter-spac
   transition: transform .12s, background .12s;
 }
 .icon-btn:active { transform: scale(.94); background: var(--surface-2); }
+.boot-error { position: fixed; top: 0; left: 0; right: 0; z-index: 999; background: var(--bad); color: #fff; font-size: 13px; font-weight: 600; text-align: center; padding: 10px 16px; }
 #btn-leg-save { font-size: 20px; color: var(--ink-faint); }
 #btn-leg-save.on { color: var(--delay); border-color: var(--delay-wash); background: var(--delay-wash); }
 
