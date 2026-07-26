@@ -123,11 +123,22 @@ function buildProgress(svc) {
     atd: hhmm(p.at),
     platform: p.platform || null,
     cancelled: p.isCancelled === true,
-    departed: !!hhmm(p.at),
   }));
 
+  // Darwin's per-stop "actual departure" (atd) isn't reliably present on every calling
+  // point — in testing, a train several stops into its journey still showed no atd
+  // anywhere, so relying on it alone left the position stuck at "not yet departed the
+  // very first stop" regardless of real progress. Scheduled/estimated times (std/etd)
+  // are reliably present on every stop, so those drive this now: compare each stop's
+  // best-known time against the clock, and only prefer atd when it's actually there.
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
   let lastDeparted = -1;
-  stops.forEach((s, i) => { if (s.departed) lastDeparted = i; });
+  stops.forEach((s, i) => {
+    if (s.atd) { lastDeparted = i; return; }
+    const t = timeToMinutesToday(s.etd || s.std);
+    if (t != null && t <= nowMin) lastDeparted = i;
+  });
+  stops.forEach((s, i) => { s.departed = i <= lastDeparted; });
   const currentIdx = lastDeparted >= 0 ? Math.min(lastDeparted + 1, stops.length - 1) : 0;
   stops.forEach((s, i) => { s.passed = i < currentIdx; s.current = i === currentIdx; });
 
@@ -152,10 +163,7 @@ function buildProgress(svc) {
       let frac = 0;
       if (depMin != null && arrMin != null) {
         const span = arrMin - depMin;
-        if (span > 0) {
-          const nowMin = (new Date().getHours() * 60 + new Date().getMinutes());
-          frac = Math.max(0, Math.min(1, (nowMin - depMin) / span));
-        }
+        if (span > 0) frac = Math.max(0, Math.min(1, (nowMin - depMin) / span));
       }
       pos = lastDeparted + frac;
       caption = frac > 0.08 && frac < 0.92
