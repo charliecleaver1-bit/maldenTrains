@@ -666,7 +666,12 @@
   .svc[role="button"]:hover{background:var(--surface-2);}
   .svc[role="button"]:focus-visible{outline:2px solid var(--amber);outline-offset:-2px;}
   .svc:active{transform:scale(.995)}
-  .svc.gone{opacity:.4}
+  .svc.gone{opacity:.55}
+  .svc.gone .stime{color:var(--muted-2)!important;text-decoration:none;}
+  .svc.gone .right .cd{color:var(--muted-2);font-weight:500;}
+  .departed-toggle{width:100%;margin:10px 0 2px;padding:10px;text-align:center;font-family:var(--font-sans,inherit);
+    font-size:12.5px;color:var(--muted);background:transparent;border:1px dashed var(--line);border-radius:11px;cursor:pointer;}
+  .departed-toggle:hover{color:var(--text);border-color:var(--muted-2);}
   .svc-chev{color:var(--muted-2);transition:transform .25s ease,color .2s;flex:none;}
   .svc[aria-expanded="true"] .svc-chev{transform:rotate(180deg);color:var(--amber);}
   .svc .stime{font-family:var(--mono);font-size:19px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--amber);letter-spacing:.5px;}
@@ -900,6 +905,8 @@
     <span class="src" id="src">—</span>
   </div>
   <div class="board" id="board" aria-live="polite"></div>
+  <div id="departed-toggle-wrap"></div>
+  <div class="board" id="departed-board" aria-live="polite" hidden></div>
   </div><!-- /rail-view -->
 
   <div id="bus-view" hidden>
@@ -1189,6 +1196,9 @@ let state = {
   commuteEditIdx: null,
   railLiveActive: false,   // showing the ad-hoc live search pair instead of a saved journey
   railLive: { from:null, to:null },
+  departedHistory: [],     // rail: trains that have dropped off the Darwin board, most recent first
+  departedFor: null,       // "from>to" signature the history belongs to — reset when the journey changes
+  showDeparted: false,     // whether the "earlier trains" panel is expanded
   tubeLiveActive: false,
   tubeLive: { from:null, to:null },
   busLiveActive: false,
@@ -1286,19 +1296,16 @@ function demoBoard(){
    ============================================================ */
 function hhmm(d){ return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
 
-/* A train stays on the board until it has ACTUALLY left the station (or is
-   cancelled) — not merely once its due time passes. The 30-min guard just
-   sweeps up any stale entry that never gets a departure report. */
-/* Darwin's board only ever lists trains that haven't departed yet, so presence
-   on the board means "not gone". But the board is manual-refresh, so the data
-   can be minutes old — and a stale entry must not linger as the "next" train.
-   Once its expected departure is a minute past, treat it as gone. */
+/* Darwin's board only ever lists trains that haven't departed yet — once a
+   train actually leaves, Darwin drops it from the feed entirely on the next
+   poll. So the feed itself is the signal: if it's still listed, it hasn't
+   left, however close to (or slightly past) its due time. We used to also
+   hide anything more than 60s past due as a "staleness" guard, but that
+   hid trains that were still genuinely sitting at the platform — so now we
+   only hide on an explicit cancellation. */
 function isBoardable(s){
   if(s.status === "cancel") return true;
-  if(s.departed) return false;
-  const goesAt = s.etdMs || s.depMs;
-  if(!goesAt) return true;
-  return goesAt > Date.now() - 60000;
+  return !s.departed;
 }
 
 /* Why a train is late or cancelled, and any trouble Darwin already expects
@@ -1507,6 +1514,41 @@ function render(){
     }).join("");
   }
 
+  // --- earlier trains (dropped off the Darwin board since we last polled) ---
+  const depWrap = document.getElementById("departed-toggle-wrap");
+  const depBoard = document.getElementById("departed-board");
+  if(depWrap && depBoard){
+    const hist = state.departedHistory || [];
+    if(hist.length === 0){
+      depWrap.innerHTML = "";
+      depBoard.hidden = true;
+    } else {
+      depWrap.innerHTML = `<button class="departed-toggle" onclick="toggleDeparted()">
+        ${state.showDeparted ? "Hide earlier trains" : `Show earlier trains (${hist.length})`}
+      </button>`;
+      depBoard.hidden = !state.showDeparted;
+      if(state.showDeparted){
+        depBoard.innerHTML = normalise(hist).map(s=>{
+          const cd = s.status==="cancel" ? `<span class="cancel">—</span>` : `<span>Left</span>`;
+          return `<div class="svc-wrap">
+            <div class="svc gone">
+              <div class="stime">${s.stdLabel}</div>
+              <div class="mid">
+                <div class="d">${esc(s.destination)}</div>
+                <div class="s">${statusLine(s)}</div>
+                ${viaText(s)?`<div class="tag">${esc(viaText(s))}</div>`:""}
+              </div>
+              <div class="right">
+                <div class="cd">${cd}</div>
+                <div class="pl">${s.platform ? `Plat <b>${esc(s.platform)}</b>` : ""}</div>
+              </div>
+            </div>
+          </div>`;
+        }).join("");
+      }
+    }
+  }
+
   // Reopen whichever train's panel was open, across a refresh (accordion).
   if(state.expandedId){
     let reopened = false;
@@ -1529,6 +1571,11 @@ function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 let progressTargets = {}; // key -> service object (rebuilt each render)
 
 function keyFor(s){ return "s" + String(s.id || (s.std + s.destination)).replace(/[^a-z0-9]/gi,""); }
+
+function toggleDeparted(){
+  state.showDeparted = !state.showDeparted;
+  render();
+}
 
 async function toggleProgress(key){
   const panel = document.getElementById("prog-" + key);
@@ -1863,6 +1910,20 @@ async function refresh(manual){
   } else {
     if(state.services.length===0) showSkeleton();
     const res = await fetchBoard();
+    const cj = curJourney();
+    const sig = (cj.from && cj.to) ? `${cj.from}>${cj.to}` : null;
+    if(sig !== state.departedFor){                 // switched journey/live pair — start fresh
+      state.departedHistory = [];
+      state.departedFor = sig;
+    } else if(sig){
+      const stillThere = new Set(res.services.map(s=>s.id));
+      const justLeft = state.services.filter(s => s.status !== "cancel" && !stillThere.has(s.id));
+      if(justLeft.length){
+        state.departedHistory = justLeft.map(s=>({ ...s, departed:true }))
+          .concat(state.departedHistory)
+          .slice(0, 8);
+      }
+    }
     state.source = res.source;
     state.services = res.services;
     render();
@@ -1921,6 +1982,7 @@ function setJourney(i){
   if(i === state.jrnIdx && !wasLive) return;
   state.jrnIdx = i;
   state.services = [];
+  state.departedHistory = []; state.showDeparted = false;
   state.expandedId = null;
   saveLocal("jrnidx", i);
   render();
@@ -1936,6 +1998,7 @@ function swapJourney(){
     state.railLive.to = from;
     saveLocal("railLiveStations", state.railLive);
     state.services = [];
+    state.departedHistory = []; state.showDeparted = false;
     state.expandedId = null;
     render();
     refresh(false);
@@ -1947,6 +2010,7 @@ function swapJourney(){
   j.from = j.to;
   j.to = from;
   state.services = [];
+  state.departedHistory = []; state.showDeparted = false;
   state.expandedId = null;
   saveLocal("journeys", state.journeys);
   render();
@@ -2173,6 +2237,7 @@ function goLiveRail(){
   saveLocal("railLiveActive", true);
   saveLocal("railLiveStations", state.railLive);
   state.services = [];
+  state.departedHistory = []; state.showDeparted = false;
   state.expandedId = null;
   render();
   refresh(false);
