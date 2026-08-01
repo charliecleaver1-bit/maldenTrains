@@ -378,9 +378,12 @@
   .st-row .crs{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--surface-2);border-radius:5px;padding:2px 6px;flex:none;}
   .st-none{font-size:12.5px;color:var(--muted);padding:8px 2px;}
   .picked{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--line);
-    border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500;}
+    border-radius:12px;padding:12px 14px;font-size:14px;font-weight:500;cursor:pointer;}
+  .picked:active{background:var(--surface-3,var(--surface-2));}
+  .picked.static{cursor:default;}
+  .picked.static:active{background:var(--surface-2);}
   .picked .crs{font-family:var(--mono);font-size:11px;color:var(--muted);}
-  .picked button{margin-left:auto;border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;}
+  .picked .chg{margin-left:auto;color:var(--muted);font-size:12px;font-weight:400;}
   .jnote{font-size:12.5px;line-height:1.5;border-radius:11px;padding:11px 13px;margin-bottom:4px;}
   .jnote.warn{background:rgba(181,115,11,.09);border:1px solid rgba(181,115,11,.28);color:#8A5709;}
   .jnote b{font-weight:600;}
@@ -884,6 +887,10 @@
       <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M7 4L4 7M7 4l3 3"/><path d="M17 20V7M17 20l3-3M17 20l-3-3"/></svg>
       <span>Reverse</span>
     </button>
+    <button class="leg-swap" id="leg-save" onclick="openJourneySheetFromLive()" title="Save this journey" aria-label="Save this journey" hidden>
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11l4 4v12a1 1 0 0 1-1 1Z"/><path d="M9 21v-7h6v7"/></svg>
+      <span>Save</span>
+    </button>
   </div>
 
   <div class="jrn-empty" id="jrn-empty" hidden>
@@ -940,6 +947,10 @@
           <div class="stop-name" id="bus-stop-name">—</div>
           <div class="stop-toward" id="bus-stop-toward"></div>
         </div>
+        <button class="leg-swap" id="bus-save" onclick="openBusSheetFromLive()" title="Save this stop" aria-label="Save this stop" hidden>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11l4 4v12a1 1 0 0 1-1 1Z"/><path d="M9 21v-7h6v7"/></svg>
+          <span>Save</span>
+        </button>
       </div>
       <div class="board" id="bus-board" aria-live="polite"></div>
     </div>
@@ -964,7 +975,11 @@
       </button>
     </div>
     <div class="fld"><div id="t-live-to-slot"></div></div>
-    <button class="act-primary" id="live-tube-go" disabled onclick="goLiveTube()" style="width:100%;margin:4px 0 18px;padding:12px;text-align:center">Show live trains</button>
+    <button class="act-primary" id="live-tube-go" disabled onclick="goLiveTube()" style="width:100%;margin:4px 0 10px;padding:12px;text-align:center">Show live trains</button>
+    <button class="loc-btn" id="live-tube-save" onclick="openTubeSheetFromLive()" hidden style="width:100%;margin:0 0 18px;background:transparent;border:1px solid var(--line);color:var(--text)">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11l4 4v12a1 1 0 0 1-1 1Z"/><path d="M9 21v-7h6v7"/></svg>
+      Save this journey
+    </button>
 
     <div class="lbl-cap">Your tube journeys</div>
     <div class="jrn-switch" id="tube-switch"></div>
@@ -1921,7 +1936,7 @@ async function refresh(manual){
       if(justLeft.length){
         state.departedHistory = justLeft.map(s=>({ ...s, departed:true }))
           .concat(state.departedHistory)
-          .slice(0, 8);
+          .slice(0, 5);
       }
     }
     state.source = res.source;
@@ -2045,12 +2060,13 @@ function editJourney(i, ev){
 /* The From -> To header above the board. */
 function paintLeg(){
   const leg = document.getElementById("leg");
-  const j = (state.railLiveActive && state.railLive.from && state.railLive.to)
-    ? state.railLive
-    : state.journeys[state.jrnIdx];
+  const isLive = state.railLiveActive && state.railLive.from && state.railLive.to;
+  const j = isLive ? state.railLive : state.journeys[state.jrnIdx];
   const empty = document.getElementById("jrn-empty");
   if(leg) leg.hidden = !j;
   if(empty) empty.hidden = !!j;
+  const saveBtn = document.getElementById("leg-save");
+  if(saveBtn) saveBtn.hidden = !isLive;
   if(!j) return;
   const f = document.getElementById("leg-from");
   const t = document.getElementById("leg-to");
@@ -2095,13 +2111,35 @@ function closeJourneySheet(){
   document.getElementById("sheet").classList.remove("open");
 }
 
+/* "Save" on the live search — same sheet, pre-filled with the live pair,
+   asking only for a name. Direct trains get re-checked fresh, same as
+   manually picking a from/to. */
+function openJourneySheetFromLive(){
+  if(!state.railLiveActive || !state.railLive.from || !state.railLive.to) return;
+  state.jrnEditIdx = null;
+  jrnPick = {
+    from: { c: state.railLive.from, n: stationName(state.railLive.from) },
+    to:   { c: state.railLive.to,   n: stationName(state.railLive.to) },
+    checked: null,
+  };
+  document.getElementById("sheet-title").textContent = "Save this journey";
+  const nm = document.getElementById("jname");
+  if(nm) nm.value = "";
+  const del = document.getElementById("jdelete");
+  if(del) del.hidden = true;
+  setJourneyNote("");
+  fillSlot("from"); fillSlot("to"); checkJourney();
+  document.getElementById("scrim").classList.add("open");
+  document.getElementById("sheet").classList.add("open");
+}
+
 function fillSlot(which){
   const el = document.getElementById(which+"-slot");
   if(!el) return;
   const p = jrnPick[which];
   if(p){
-    el.innerHTML = `<div class="picked">${esc(p.n)} <span class="crs">${esc(p.c)}</span>
-      <button onclick="clearPick('${which}')">change</button></div>`;
+    el.innerHTML = `<div class="picked" onclick="clearPick('${which}')">${esc(p.n)} <span class="crs">${esc(p.c)}</span>
+      <span class="chg">change</span></div>`;
   } else {
     el.innerHTML = `<input placeholder="Search station\u2026" autocomplete="off" oninput="searchStations('${which}',this.value)" />
       <div class="st-results" id="${which}-res"></div>`;
@@ -2182,8 +2220,8 @@ function fillLiveRailSlot(which){
   if(!el) return;
   const p = liveRailPick[which];
   if(p){
-    el.innerHTML = `<div class="picked">${esc(p.n)} <span class="crs">${esc(p.c)}</span>
-      <button onclick="clearLiveRailPick('${which}')">change</button></div>`;
+    el.innerHTML = `<div class="picked" onclick="clearLiveRailPick('${which}')">${esc(p.n)} <span class="crs">${esc(p.c)}</span>
+      <span class="chg">change</span></div>`;
   } else {
     el.innerHTML = `<input placeholder="Search station\u2026" autocomplete="off" oninput="searchLiveRailStations('${which}',this.value)" />
       <div class="st-results" id="live-${which}-res"></div>`;
@@ -2310,7 +2348,10 @@ async function saveJourney(){
     state.jrnIdx = state.journeys.length - 1;
   }
   state.jrnEditIdx = null;
+  state.railLiveActive = false;
+  saveLocal("railLiveActive", false);
   state.services = [];
+  state.departedHistory = []; state.showDeparted = false;
   state.expandedId = null;
   saveLocal("journeys", state.journeys);
   saveLocal("jrnidx", state.jrnIdx);
@@ -2667,6 +2708,7 @@ function pillLabel(s){
 function fillStopHead(){
   const s = curStop(); if(!s) return;
   document.getElementById("bus-stop-name").textContent = s.label || s.name;
+  const sv = document.getElementById("bus-save"); if(sv) sv.hidden = !state.busLiveActive;
   const bits = [];
   if(s.label) bits.push(s.name);
   if(s.toward) bits.push(`towards ${s.toward}`);
@@ -2707,15 +2749,35 @@ function closeBusSheet(){
   document.getElementById("bsheet").classList.remove("open");
 }
 
+/* "Save this stop" on the live finder — same sheet, skips straight to
+   naming since the stop is already picked. */
+function openBusSheetFromLive(){
+  if(!state.busLiveActive || !state.liveBusStop) return;
+  state.busEditIdx = null;
+  busPick = { ...state.liveBusStop };
+  document.getElementById("bsheet-title").textContent = "Save this stop";
+  document.getElementById("bdelete").hidden = true;
+  document.getElementById("bname").value = "";
+  document.getElementById("b-find").hidden = true;
+  document.getElementById("b-picked-wrap").hidden = false;
+  document.getElementById("bus-results").innerHTML = "";
+  document.getElementById("finder-msg").textContent = "";
+  paintBusPicked();
+  checkBus();
+  document.getElementById("bscrim").classList.add("open");
+  document.getElementById("bsheet").classList.add("open");
+}
+
 function paintBusPicked(){
   const el = document.getElementById("b-picked");
   if(!el || !busPick) return;
   const bits = [];
   if(busPick.toward) bits.push(`towards ${busPick.toward}`);
   if(busPick.letter) bits.push(`Stop ${busPick.letter}`);
-  el.innerHTML = `<div class="picked">${esc(busPick.name)}
+  const tappable = state.busEditIdx === null;
+  el.innerHTML = `<div class="picked${tappable ? "" : " static"}"${tappable ? ` onclick="clearBusPick()"` : ""}>${esc(busPick.name)}
     ${bits.length?`<span class="crs">${esc(bits.join(" \u00b7 "))}</span>`:""}
-    ${state.busEditIdx===null?`<button onclick="clearBusPick()">change</button>`:""}</div>`;
+    ${tappable?`<span class="chg">change</span>`:""}</div>`;
 }
 
 function clearBusPick(){
@@ -2768,6 +2830,8 @@ function saveBusStop(){
     else { state.busStops.push(entry); state.busIdx = state.busStops.length - 1; }
   }
   state.busEditIdx = null;
+  state.busLiveActive = false;
+  saveLocal("busLiveActive", false);
   state.busData = null;
   saveLocal("busstops", state.busStops);
   saveLocal("busidx", state.busIdx);
@@ -3055,6 +3119,7 @@ function setTubeJourney(i){
   if(!state.tubeJourneys[i]) return;
   state.tubeLiveActive = false;
   saveLocal("tubeLiveActive", false);
+  const sv = document.getElementById("live-tube-save"); if(sv) sv.hidden = true;
   state.tubeIdx = i;
   tubePlan = null;
   saveLocal("tubeidx", i);
@@ -3298,11 +3363,34 @@ function closeTubeSheet(){
   document.getElementById("tsheet").classList.remove("open");
 }
 
+/* "Save this journey" on the live tube search — pre-fills the sheet with the
+   live pair and plans routes immediately, same as editing an existing one;
+   the user still picks which route/branch and gives it a name. */
+function openTubeSheetFromLive(){
+  if(!state.tubeLiveActive || !state.tubeLive.from || !state.tubeLive.to) return;
+  state.tubeEditIdx = null;
+  tubePick = { from: state.tubeLive.from, to: state.tubeLive.to };
+  tubeRoutes = []; tubeChosen = null;
+
+  document.getElementById("tsheet-title").textContent = "Save this journey";
+  document.getElementById("tjname").value = "";
+  document.getElementById("tjdelete").hidden = true;
+  document.getElementById("t-routewrap").innerHTML = "";
+  document.getElementById("t-namefld").hidden = true;
+
+  tubeSlot("from"); tubeSlot("to");
+  planTube();
+  checkTube();
+
+  document.getElementById("tscrim").classList.add("open");
+  document.getElementById("tsheet").classList.add("open");
+}
+
 function tubeSlot(which){
   const el = document.getElementById(`t-${which}-slot`);
   const p = tubePick[which];
   if(p){
-    el.innerHTML = `<div class="picked">${esc(p.name)}<button onclick="clearTubePick('${which}')">change</button></div>`;
+    el.innerHTML = `<div class="picked" onclick="clearTubePick('${which}')">${esc(p.name)}<span class="chg">change</span></div>`;
   } else {
     el.innerHTML = `<input placeholder="Search tube station…" autocomplete="off" oninput="searchTube('${which}',this.value)" />
       <div class="st-results" id="t-${which}-res"></div>`;
@@ -3400,6 +3488,7 @@ function initLiveTube(){
   const saved = readLocal("tubeLiveStations");
   if(saved && saved.from && saved.to) liveTubePick = { from:saved.from, to:saved.to };
   fillLiveTubeSlot("from"); fillLiveTubeSlot("to"); checkLiveTube();
+  const sv = document.getElementById("live-tube-save"); if(sv) sv.hidden = !state.tubeLiveActive;
 }
 
 function fillLiveTubeSlot(which){
@@ -3407,7 +3496,7 @@ function fillLiveTubeSlot(which){
   if(!el) return;
   const p = liveTubePick[which];
   if(p){
-    el.innerHTML = `<div class="picked">${esc(p.name)}<button onclick="clearLiveTubePick('${which}')">change</button></div>`;
+    el.innerHTML = `<div class="picked" onclick="clearLiveTubePick('${which}')">${esc(p.name)}<span class="chg">change</span></div>`;
   } else {
     el.innerHTML = `<input placeholder="Search tube station\u2026" autocomplete="off" oninput="searchLiveTube('${which}',this.value)" />
       <div class="st-results" id="t-live-${which}-res"></div>`;
@@ -3461,6 +3550,7 @@ function goLiveTube(){
   saveLocal("tubeLiveStations", state.tubeLive);
   tubePlan = null;
   renderTubePills();
+  const sv = document.getElementById("live-tube-save"); if(sv) sv.hidden = false;
   const card = document.getElementById("tube-card");
   if(card) card.innerHTML = `<div class="troute"><div class="t-spin">Planning your route\u2026</div></div>`;
   loadTubeJourney();
@@ -3499,6 +3589,9 @@ function saveTubeJourney(){
     state.tubeIdx = state.tubeJourneys.length - 1;
   }
   state.tubeEditIdx = null;
+  state.tubeLiveActive = false;
+  saveLocal("tubeLiveActive", false);
+  { const sv = document.getElementById("live-tube-save"); if(sv) sv.hidden = true; }
   tubePlan = null;
   saveLocal("tubejourneys", state.tubeJourneys);
   saveLocal("tubeidx", state.tubeIdx);
